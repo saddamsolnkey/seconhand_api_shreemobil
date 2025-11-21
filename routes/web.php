@@ -51,6 +51,11 @@ Route::get('user/edit/{id}', [UserController::class, 'edit'])->name('admin.user.
 Route::post('users/update/{id}', [UserController::class, 'update'])->name('admin.user.update');
 
 Route::delete('user/delete/{id}', [UserController::class, 'delete'])->name('admin.user.delete');
-//});
 
+// Stock Management
+Route::get('stocks', function () {
+    return view('admin.stocks.index');
+})->name('admin.stocks');
+
+//});
 });

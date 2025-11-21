@@ -62,3 +62,28 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+
+
+php artisan migrate
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan route:list | grep stock
+
+
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && lsof -ti:8000 || echo "No server running on port 8000"
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan serve --host=127.0.0.1 --port=8000 &
+
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan make:migration make_size_and_color_nullable_in_stocks_table
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan migrate
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan migrate:rollback --step=1 && php artisan migrate
+
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && curl -s -X POST "http://127.0.0.1:8000/api/stock-add" -H "Content-Type: application/json" -d '{"brand":"test-brand-only"}' | python3 -m json.tool
+
+cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && curl -s -X POST "http://127.0.0.1:8000/api/stock-bulk-add" -H "Content-Type: application/json" -d '{"stocks":[{"brand":"bulk-test-1"},{"brand":"bulk-test-2","quantity":5}]}' | python3 -m json.tool

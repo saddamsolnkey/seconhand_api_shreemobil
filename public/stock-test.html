@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Management API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background: #28a745; color: white; }
+        .post { background: #007bff; color: white; }
+        .url {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            display: block;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .test-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .example {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📦 Stock Management API Test Page</h1>
+    <p><strong>Base URL:</strong> <code>http://127.0.0.1:8000/api</code></p>
+
+    <div class="container">
+        <h2>1. Get Stock List (GET)</h2>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>Get stock list for a specific date</strong>
+            <div class="url">http://127.0.0.1:8000/api/stock-list?date=2025-11-21</div>
+            <a href="http://127.0.0.1:8000/api/stock-list?date=2025-11-21" target="_blank">
+                <button class="test-btn">Test in Browser →</button>
+            </a>
+            <p><small>Change the date parameter to test different dates</small></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>2. Daily Report (GET)</h2>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>Get daily report with quantity changes</strong>
+            <div class="url">http://127.0.0.1:8000/api/stock-daily-report?date=2025-11-22</div>
+            <a href="http://127.0.0.0.1:8000/api/stock-daily-report?date=2025-11-22" target="_blank">
+                <button class="test-btn">Test in Browser →</button>
+            </a>
+            <p><small>Shows quantity changes from previous day</small></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>3. Weekly Report (GET)</h2>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>Get weekly report</strong>
+            <div class="url">http://127.0.0.1:8000/api/stock-weekly-report?week_start=2025-11-18</div>
+            <a href="http://127.0.0.1:8000/api/stock-weekly-report?week_start=2025-11-18" target="_blank">
+                <button class="test-btn">Test in Browser →</button>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>4. Monthly Report (GET)</h2>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>Get monthly report</strong>
+            <div class="url">http://127.0.0.1:8000/api/stock-monthly-report?month=2025-11</div>
+            <a href="http://127.0.0.1:8000/api/stock-monthly-report?month=2025-11" target="_blank">
+                <button class="test-btn">Test in Browser →</button>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>5. Stock Summary (GET)</h2>
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>Get stock summary by date range</strong>
+            <div class="url">http://127.0.0.1:8000/api/stock-summary?from_date=2025-11-01&to_date=2025-11-30</div>
+            <a href="http://127.0.0.1:8000/api/stock-summary?from_date=2025-11-01&to_date=2025-11-30" target="_blank">
+                <button class="test-btn">Test in Browser →</button>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>6. POST Requests (Use Browser Console or Postman)</h2>
+        <p>For POST requests, you need to use browser console or a tool like Postman. Here are examples:</p>
+        
+        <h3>Add Single Stock</h3>
+        <div class="example">
+POST: http://127.0.0.1:8000/api/stock-add
+Content-Type: application/json
+
+{
+  "brand": "samsung",
+  "size": "256gb",
+  "color": "black",
+  "quantity": 5,
+  "stock_date": "2025-11-21"
+}
+        </div>
+
+        <h3>Bulk Add Stocks</h3>
+        <div class="example">
+POST: http://127.0.0.1:8000/api/stock-bulk-add
+Content-Type: application/json
+
+{
+  "stock_date": "2025-11-21",
+  "stocks": [
+    {"brand": "samsung", "size": "256gb", "color": "black", "quantity": 5},
+    {"brand": "apple", "size": "256gb", "color": "gold", "quantity": 3},
+    {"brand": "nokiya", "size": "256gb", "color": "blue", "quantity": 7}
+  ]
+}
+        </div>
+
+        <h3>Test POST in Browser Console</h3>
+        <div class="example">
+// Copy and paste this in browser console (F12)
+fetch('http://127.0.0.1:8000/api/stock-bulk-add', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    stock_date: '2025-11-21',
+    stocks: [
+      {brand: 'samsung', size: '256gb', color: 'black', quantity: 5},
+      {brand: 'apple', size: '256gb', color: 'gold', quantity: 3},
+      {brand: 'nokiya', size: '256gb', color: 'blue', quantity: 7}
+    ]
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 Quick Test Instructions</h2>
+        <ol>
+            <li><strong>GET Requests:</strong> Click the "Test in Browser" buttons above or copy the URLs directly into your browser address bar</li>
+            <li><strong>POST Requests:</strong> 
+                <ul>
+                    <li>Open browser console (F12 or Right-click → Inspect → Console)</li>
+                    <li>Copy the JavaScript code from section 6 above</li>
+                    <li>Paste and press Enter</li>
+                    <li>Or use <a href="https://www.postman.com/" target="_blank">Postman</a> or <a href="https://reqbin.com/" target="_blank">ReqBin</a></li>
+                </ul>
+            </li>
+            <li><strong>Install JSON Formatter Extension:</strong> For better JSON viewing in browser, install a JSON formatter extension like "JSON Formatter" for Chrome/Firefox</li>
+        </ol>
+    </div>
+
+    <script>
+        // Auto-test function (optional)
+        function testAPI(url, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            fetch(url, options)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Response:', data);
+                    alert('Check console for response (F12)');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error: ' + error.message);
+                });
+        }
+    </script>
+</body>
+</html>
+

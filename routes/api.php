@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\demoController;
+use App\Http\Controllers\Api\StockController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +49,17 @@ Route::group([
     
     Route::get('getalldevice', [ProductController::class, 'getalldevice']);
     Route::post('device-update', [ProductController::class, 'updatedevice']);
+
+    // Stock Management Routes
+    Route::get('stock-list', [StockController::class, 'stockList']);
+    Route::post('stock-add', [StockController::class, 'stockAdd']);
+    Route::post('stock-bulk-add', [StockController::class, 'stockBulkAdd']);
+    Route::post('stock-update/{id}', [StockController::class, 'stockUpdate']);
+    Route::get('stock-delete/{id}', [StockController::class, 'stockDelete']);
+    Route::get('stock-daily-report', [StockController::class, 'dailyReport']);
+    Route::get('stock-weekly-report', [StockController::class, 'weeklyReport']);
+    Route::get('stock-monthly-report', [StockController::class, 'monthlyReport']);
+    Route::get('stock-summary', [StockController::class, 'stockSummary']);
 
 });
 

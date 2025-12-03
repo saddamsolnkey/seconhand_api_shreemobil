@@ -221,9 +221,11 @@ class StockController extends Controller
     }
 
     /**
-     * Update stock by ID
+     * Update stock by ID - creates new entry with date-wise data
      * POST /api/stock-update/{id}
-     * All fields are optional - only update what is provided
+     * When updating, creates a new entry with current date instead of modifying existing
+     * Required: quantity
+     * Optional: stock_date (defaults to today), notes
      */
     public function stockUpdate(Request $request, $id)
     {
@@ -237,10 +239,7 @@ class StockController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'brand' => 'nullable|string|max:255',
-            'size' => 'nullable|string|max:255',
-            'color' => 'nullable|string|max:255',
-            'quantity' => 'nullable|integer|min:0',
+            'quantity' => 'required|integer|min:0',
             'stock_date' => 'nullable|date',
             'notes' => 'nullable|string',
         ]);
@@ -252,32 +251,223 @@ class StockController extends Controller
             ], 422);
         }
 
-        // Update only provided fields
-        if ($request->has('brand')) {
-            $stock->brand = $request->brand;
-        }
-        if ($request->has('size')) {
-            $stock->size = $request->size;
-        }
-        if ($request->has('color')) {
-            $stock->color = $request->color;
-        }
-        if ($request->has('quantity')) {
-            $stock->quantity = $request->quantity;
-        }
-        if ($request->has('stock_date')) {
-            $stock->stock_date = $request->stock_date;
-        }
-        if ($request->has('notes')) {
-            $stock->notes = $request->notes;
+        // Get the update date (default to today)
+        $updateDate = $request->has('stock_date') ? $request->stock_date : Carbon::today()->toDateString();
+        
+        // Get the previous quantity (from the most recent entry for this brand/size/color before update date)
+        $previousStock = Stock::where('brand', $stock->brand)
+            ->where(function($query) use ($stock) {
+                if ($stock->size) {
+                    $query->where('size', $stock->size);
+                } else {
+                    $query->whereNull('size');
+                }
+            })
+            ->where(function($query) use ($stock) {
+                if ($stock->color) {
+                    $query->where('color', $stock->color);
+                } else {
+                    $query->whereNull('color');
+                }
+            })
+            ->where('stock_date', '<', $updateDate)
+            ->orderBy('stock_date', 'desc')
+            ->first();
+        
+        $previousQuantity = $previousStock ? $previousStock->quantity : 0;
+        $newQuantity = $request->quantity;
+        $change = $newQuantity - $previousQuantity;
+        $addNew = $change > 0 ? $change : 0;
+        $minus = $change < 0 ? abs($change) : 0;
+
+        // Check if entry already exists for this date
+        $existingQuery = Stock::where('brand', $stock->brand);
+        
+        if ($stock->size !== null) {
+            $existingQuery->where('size', $stock->size);
+        } else {
+            $existingQuery->whereNull('size');
         }
         
-        $stock->save();
+        if ($stock->color !== null) {
+            $existingQuery->where('color', $stock->color);
+        } else {
+            $existingQuery->whereNull('color');
+        }
+        
+        $existingQuery->where('stock_date', $updateDate);
+        $existingStock = $existingQuery->where('id', '!=', $id)->first();
+
+        if ($existingStock) {
+            // Update existing entry for this date
+            $existingStock->quantity = $newQuantity;
+            if ($request->has('notes')) {
+                $existingStock->notes = $request->notes;
+            }
+            $existingStock->save();
+            
+            return response([
+                'data' => [
+                    'stock' => $existingStock,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
+                    'previous_quantity' => $previousQuantity,
+                    'remaining' => $newQuantity,
+                ],
+                'message' => 'Stock updated successfully (existing entry for this date was updated)'
+            ], 200);
+        } else {
+            // Create new entry with date-wise data
+            $newStock = Stock::create([
+                'brand' => $stock->brand,
+                'size' => $stock->size,
+                'color' => $stock->color,
+                'quantity' => $newQuantity,
+                'stock_date' => $updateDate,
+                'notes' => $request->has('notes') ? $request->notes : $stock->notes,
+            ]);
+            
+            return response([
+                'data' => [
+                    'stock' => $newStock,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
+                    'previous_quantity' => $previousQuantity,
+                    'remaining' => $newQuantity,
+                ],
+                'message' => 'New stock entry created successfully with date-wise data'
+            ], 201);
+        }
+    }
+
+    /**
+     * Bulk update stocks - creates new entries with date-wise data
+     * POST /api/stock-bulk-update
+     * Body: { "stock_date": "2025-12-13", "stocks": [{ "id": 1, "quantity": 15, "notes": "..." }, ...] }
+     * Each update creates a new entry with the specified date
+     */
+    public function stockBulkUpdate(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'stock_date' => 'nullable|date',
+            'stocks' => 'required|array|min:1',
+            'stocks.*.id' => 'required|integer|exists:stocks,id',
+            'stocks.*.quantity' => 'required|integer|min:0',
+            'stocks.*.notes' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'error' => $validator->errors(),
+                'message' => 'Validation Error'
+            ], 422);
+        }
+
+        // Set default date if not provided
+        $stockDate = $request->stock_date ? $request->stock_date : Carbon::today()->toDateString();
+        $results = [];
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        foreach ($request->stocks as $stockUpdate) {
+            $originalStock = Stock::find($stockUpdate['id']);
+            
+            if (!$originalStock) {
+                $errors[] = "Stock ID {$stockUpdate['id']} not found";
+                continue;
+            }
+
+            // Get the previous quantity (from the most recent entry before update date)
+            $previousStock = Stock::where('brand', $originalStock->brand)
+                ->where(function($query) use ($originalStock) {
+                    if ($originalStock->size) {
+                        $query->where('size', $originalStock->size);
+                    } else {
+                        $query->whereNull('size');
+                    }
+                })
+                ->where(function($query) use ($originalStock) {
+                    if ($originalStock->color) {
+                        $query->where('color', $originalStock->color);
+                    } else {
+                        $query->whereNull('color');
+                    }
+                })
+                ->where('stock_date', '<', $stockDate)
+                ->orderBy('stock_date', 'desc')
+                ->first();
+            
+            $previousQuantity = $previousStock ? $previousStock->quantity : 0;
+            $newQuantity = $stockUpdate['quantity'];
+            $change = $newQuantity - $previousQuantity;
+            $addNew = $change > 0 ? $change : 0;
+            $minus = $change < 0 ? abs($change) : 0;
+
+            // Check if entry already exists for this date
+            $existingQuery = Stock::where('brand', $originalStock->brand);
+            
+            if ($originalStock->size !== null) {
+                $existingQuery->where('size', $originalStock->size);
+            } else {
+                $existingQuery->whereNull('size');
+            }
+            
+            if ($originalStock->color !== null) {
+                $existingQuery->where('color', $originalStock->color);
+            } else {
+                $existingQuery->whereNull('color');
+            }
+            
+            $existingQuery->where('stock_date', $stockDate);
+            $existingStock = $existingQuery->where('id', '!=', $originalStock->id)->first();
+
+            if ($existingStock) {
+                // Update existing entry for this date
+                $existingStock->quantity = $newQuantity;
+                if (isset($stockUpdate['notes'])) {
+                    $existingStock->notes = $stockUpdate['notes'];
+                }
+                $existingStock->save();
+                $updated++;
+                
+                $results[] = [
+                    'stock' => $existingStock,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
+                    'previous_quantity' => $previousQuantity,
+                    'remaining' => $newQuantity,
+                ];
+            } else {
+                // Create new entry with date-wise data
+                $newStock = Stock::create([
+                    'brand' => $originalStock->brand,
+                    'size' => $originalStock->size,
+                    'color' => $originalStock->color,
+                    'quantity' => $newQuantity,
+                    'stock_date' => $stockDate,
+                    'notes' => isset($stockUpdate['notes']) ? $stockUpdate['notes'] : $originalStock->notes,
+                ]);
+                $created++;
+                
+                $results[] = [
+                    'stock' => $newStock,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
+                    'previous_quantity' => $previousQuantity,
+                    'remaining' => $newQuantity,
+                ];
+            }
+        }
 
         return response([
-            'data' => $stock,
-            'message' => 'Stock updated successfully'
-        ], 200);
+            'data' => $results,
+            'created' => $created,
+            'updated' => $updated,
+            'stock_date' => $stockDate,
+            'errors' => $errors,
+            'message' => "Stock bulk update completed. Created: $created new entries, Updated: $updated existing entries"
+        ], 201);
     }
 
     /**
@@ -299,6 +489,104 @@ class StockController extends Controller
 
         return response([
             'message' => 'Stock deleted successfully'
+        ], 200);
+    }
+
+    /**
+     * Get date-wise stock report with added, minus, and remaining quantities
+     * GET /api/stock-date-report?date=2015-12-13
+     * GET /api/stock-date-report?date=2015-12-13&brand=samsung&size=256&color=black
+     * 
+     * Returns: brand, size, color, add_new (added quantity), minus (reduced quantity), remaining (final quantity)
+     */
+    public function stockDateReport(Request $request)
+    {
+        $date = $request->get('date');
+        $brand = $request->get('brand');
+        $size = $request->get('size');
+        $color = $request->get('color');
+
+        if (!$date) {
+            return response([
+                'error' => 'Date is required',
+                'message' => 'Please provide date parameter (format: YYYY-MM-DD)'
+            ], 400);
+        }
+
+        $query = Stock::where('stock_date', $date);
+        
+        if ($brand) {
+            $query->where('brand', $brand);
+        }
+        if ($size !== null) {
+            if ($size === '') {
+                $query->whereNull('size');
+            } else {
+                $query->where('size', $size);
+            }
+        }
+        if ($color !== null) {
+            if ($color === '') {
+                $query->whereNull('color');
+            } else {
+                $query->where('color', $color);
+            }
+        }
+
+        $stocks = $query->orderBy('brand')
+            ->orderBy('size')
+            ->orderBy('color')
+            ->get();
+
+        $result = [];
+        foreach ($stocks as $stock) {
+            // Get previous quantity (from most recent entry before this date)
+            $previousStock = Stock::where('brand', $stock->brand)
+                ->where(function($q) use ($stock) {
+                    if ($stock->size) {
+                        $q->where('size', $stock->size);
+                    } else {
+                        $q->whereNull('size');
+                    }
+                })
+                ->where(function($q) use ($stock) {
+                    if ($stock->color) {
+                        $q->where('color', $stock->color);
+                    } else {
+                        $q->whereNull('color');
+                    }
+                })
+                ->where('stock_date', '<', $date)
+                ->orderBy('stock_date', 'desc')
+                ->first();
+            
+            $previousQuantity = $previousStock ? $previousStock->quantity : 0;
+            $currentQuantity = $stock->quantity;
+            $change = $currentQuantity - $previousQuantity;
+            
+            // Calculate added and minus quantities
+            $addNew = $change > 0 ? $change : 0;  // Added quantity (positive change)
+            $minus = $change < 0 ? abs($change) : 0;  // Minus quantity (negative change)
+            $remaining = $currentQuantity;  // Remaining quantity
+
+            $result[] = [
+                'id' => $stock->id,
+                'date' => $stock->stock_date,
+                'brand' => $stock->brand,
+                'size' => $stock->size,
+                'color' => $stock->color,
+                'add_new' => $addNew,
+                'minus' => $minus,
+                'remaining' => $remaining,
+                'previous_quantity' => $previousQuantity,
+                'notes' => $stock->notes,
+            ];
+        }
+
+        return response([
+            'data' => $result,
+            'date' => $date,
+            'message' => 'Date-wise stock report retrieved successfully'
         ], 200);
     }
 

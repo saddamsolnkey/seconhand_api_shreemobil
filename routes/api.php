@@ -55,7 +55,9 @@ Route::group([
     Route::post('stock-add', [StockController::class, 'stockAdd']);
     Route::post('stock-bulk-add', [StockController::class, 'stockBulkAdd']);
     Route::post('stock-update/{id}', [StockController::class, 'stockUpdate']);
+    Route::post('stock-bulk-update', [StockController::class, 'stockBulkUpdate']);
     Route::get('stock-delete/{id}', [StockController::class, 'stockDelete']);
+    Route::get('stock-date-report', [StockController::class, 'stockDateReport']);
     Route::get('stock-daily-report', [StockController::class, 'dailyReport']);
     Route::get('stock-weekly-report', [StockController::class, 'weeklyReport']);
     Route::get('stock-monthly-report', [StockController::class, 'monthlyReport']);

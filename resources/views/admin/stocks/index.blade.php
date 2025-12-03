@@ -42,6 +42,7 @@
                <label>Report Type:</label>
                <select id="reportType" class="form-control" onchange="loadReport()">
                   <option value="">Select Report</option>
+                  <option value="datewise">Date-wise Report</option>
                   <option value="daily">Daily Report</option>
                   <option value="weekly">Weekly Report</option>
                   <option value="monthly">Monthly Report</option>
@@ -445,12 +446,17 @@ function editStock(id, brand, size, color, quantity, date, notes) {
    $('#editStockModal').modal('show');
 }
 
-// Update stock
+// Update stock - creates new entry with date-wise data
 function updateStock() {
    const id = document.getElementById('editStockId').value;
+   const quantity = parseInt(document.getElementById('editQuantity').value);
+   const stockDate = document.getElementById('editStockDate').value;
+   const notes = document.getElementById('editNotes').value;
+   
    const data = {
-      quantity: parseInt(document.getElementById('editQuantity').value),
-      notes: document.getElementById('editNotes').value
+      quantity: quantity,
+      stock_date: stockDate,
+      notes: notes
    };
    
    fetch(`${API_BASE}/stock-update/${id}`, {
@@ -544,6 +550,57 @@ function loadDailyReport() {
       });
 }
 
+// Load date-wise report
+function loadDateWiseReport() {
+   const date = document.getElementById('filterDate').value;
+   document.getElementById('reportCard').style.display = 'block';
+   
+   fetch(`${API_BASE}/stock-date-report?date=${date}`)
+      .then(response => response.json())
+      .then(data => {
+         if (data.data && data.data.length > 0) {
+            let html = `<h5>Date-wise Report for ${date}</h5>`;
+            html += `<table class="table table-bordered table-striped">
+               <thead>
+                  <tr>
+                     <th>Brand</th>
+                     <th>Size</th>
+                     <th>Color</th>
+                     <th>Add New</th>
+                     <th>Minus</th>
+                     <th>Remaining</th>
+                     <th>Previous Qty</th>
+                     <th>Notes</th>
+                  </tr>
+               </thead>
+               <tbody>`;
+            
+            data.data.forEach(item => {
+               html += `
+                  <tr>
+                     <td>${item.brand}</td>
+                     <td>${item.size || '-'}</td>
+                     <td>${item.color || '-'}</td>
+                     <td class="text-success"><strong>${item.add_new}</strong></td>
+                     <td class="text-danger"><strong>${item.minus}</strong></td>
+                     <td class="text-primary"><strong>${item.remaining}</strong></td>
+                     <td>${item.previous_quantity}</td>
+                     <td>${item.notes || '-'}</td>
+                  </tr>
+               `;
+            });
+            
+            html += `</tbody></table>`;
+            document.getElementById('reportContent').innerHTML = html;
+         } else {
+            document.getElementById('reportContent').innerHTML = '<p>No data available for this date</p>';
+         }
+      })
+      .catch(error => {
+         showAlert('Error loading report: ' + error.message, 'danger');
+      });
+}
+
 // Load report based on type
 function loadReport() {
    const type = document.getElementById('reportType').value;
@@ -551,6 +608,11 @@ function loadReport() {
    
    document.getElementById('reportCard').style.display = 'block';
    const date = document.getElementById('filterDate').value;
+   
+   if (type === 'datewise') {
+      loadDateWiseReport();
+      return;
+   }
    
    let url = '';
    if (type === 'daily') {

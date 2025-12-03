@@ -623,6 +623,10 @@ class StockController extends Controller
             $change = $current->quantity - $previousQuantity;
             $changeType = $change > 0 ? 'plus' : ($change < 0 ? 'minus' : 'no_change');
             $changeText = $change > 0 ? "+$change" : ($change < 0 ? "$change" : "0");
+            
+            // Calculate added and removed quantities
+            $addNew = $change > 0 ? $change : 0;
+            $minus = $change < 0 ? abs($change) : 0;
 
             $report[] = [
                 'id' => $current->id,
@@ -631,6 +635,8 @@ class StockController extends Controller
                 'color' => $current->color,
                 'quantity' => $current->quantity,
                 'previous_quantity' => $previousQuantity,
+                'add_new' => $addNew,
+                'minus' => $minus,
                 'change' => $change,
                 'change_type' => $changeType,
                 'change_text' => $changeText,
@@ -696,6 +702,10 @@ class StockController extends Controller
                 $change = $current->quantity - $previousQuantity;
                 $changeType = $change > 0 ? 'plus' : ($change < 0 ? 'minus' : 'no_change');
                 $changeText = $change > 0 ? "+$change" : ($change < 0 ? "$change" : "0");
+                
+                // Calculate added and removed quantities
+                $addNew = $change > 0 ? $change : 0;
+                $minus = $change < 0 ? abs($change) : 0;
 
                 $dayReport[] = [
                     'brand' => $current->brand,
@@ -703,6 +713,8 @@ class StockController extends Controller
                     'color' => $current->color,
                     'quantity' => $current->quantity,
                     'previous_quantity' => $previousQuantity,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
                     'change' => $change,
                     'change_type' => $changeType,
                     'change_text' => $changeText,
@@ -770,6 +782,10 @@ class StockController extends Controller
                 $change = $current->quantity - $previousQuantity;
                 $changeType = $change > 0 ? 'plus' : ($change < 0 ? 'minus' : 'no_change');
                 $changeText = $change > 0 ? "+$change" : ($change < 0 ? "$change" : "0");
+                
+                // Calculate added and removed quantities
+                $addNew = $change > 0 ? $change : 0;
+                $minus = $change < 0 ? abs($change) : 0;
 
                 $dayReport[] = [
                     'brand' => $current->brand,
@@ -777,6 +793,8 @@ class StockController extends Controller
                     'color' => $current->color,
                     'quantity' => $current->quantity,
                     'previous_quantity' => $previousQuantity,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
                     'change' => $change,
                     'change_type' => $changeType,
                     'change_text' => $changeText,

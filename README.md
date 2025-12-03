@@ -433,7 +433,7 @@ GET /api/stock-date-report?date=2025-12-13&brand=samsung&size=256&color=black
 ---
 
 #### 8. Daily Report
-Get daily report comparing current date with previous date.
+Get daily report comparing current date with previous date, showing added and removed quantities.
 
 **Endpoint:** `GET /api/stock-daily-report`
 
@@ -456,6 +456,8 @@ GET /api/stock-daily-report?date=2025-12-13
       "color": "black",
       "quantity": 10,
       "previous_quantity": 5,
+      "add_new": 5,
+      "minus": 0,
       "change": 5,
       "change_type": "plus",
       "change_text": "+5",
@@ -468,10 +470,17 @@ GET /api/stock-daily-report?date=2025-12-13
 }
 ```
 
+**Response Fields:**
+- `add_new`: Quantity added (positive change)
+- `minus`: Quantity removed/sold (negative change)
+- `change`: Net change (+/-)
+- `change_type`: "plus", "minus", or "no_change"
+- `change_text`: Formatted change text (e.g., "+5" or "-3")
+
 ---
 
 #### 9. Weekly Report
-Get weekly report with daily breakdown.
+Get weekly report with daily breakdown, showing added and removed quantities for each day.
 
 **Endpoint:** `GET /api/stock-weekly-report`
 
@@ -483,10 +492,41 @@ Get weekly report with daily breakdown.
 GET /api/stock-weekly-report?week_start=2025-12-09
 ```
 
+**Example Response:**
+```json
+{
+  "data": {
+    "2025-12-09": [
+      {
+        "brand": "samsung",
+        "size": "256",
+        "color": "black",
+        "quantity": 10,
+        "previous_quantity": 5,
+        "add_new": 5,
+        "minus": 0,
+        "change": 5,
+        "change_type": "plus",
+        "change_text": "+5"
+      }
+    ],
+    "2025-12-10": [...]
+  },
+  "week_start": "2025-12-09",
+  "week_end": "2025-12-15",
+  "message": "Weekly report retrieved successfully"
+}
+```
+
+**Each day shows:**
+- `add_new`: Items added
+- `minus`: Items removed/sold
+- `change`: Net change
+
 ---
 
 #### 10. Monthly Report
-Get monthly report with daily breakdown.
+Get monthly report with daily breakdown, showing added and removed quantities for each day.
 
 **Endpoint:** `GET /api/stock-monthly-report`
 
@@ -497,6 +537,38 @@ Get monthly report with daily breakdown.
 ```bash
 GET /api/stock-monthly-report?month=2025-12
 ```
+
+**Example Response:**
+```json
+{
+  "data": {
+    "2025-12-01": [
+      {
+        "brand": "samsung",
+        "size": "256",
+        "color": "black",
+        "quantity": 15,
+        "previous_quantity": 10,
+        "add_new": 5,
+        "minus": 0,
+        "change": 5,
+        "change_type": "plus",
+        "change_text": "+5"
+      }
+    ],
+    "2025-12-02": [...]
+  },
+  "month": "2025-12",
+  "month_start": "2025-12-01",
+  "month_end": "2025-12-31",
+  "message": "Monthly report retrieved successfully"
+}
+```
+
+**Each day shows:**
+- `add_new`: Items added
+- `minus`: Items removed/sold
+- `change`: Net change
 
 ---
 

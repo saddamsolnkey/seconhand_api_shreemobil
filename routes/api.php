@@ -52,6 +52,7 @@ Route::group([
 
     // Stock Management Routes
     Route::get('stock-list', [StockController::class, 'stockList']);
+    Route::get('stock-current', [StockController::class, 'stockCurrent']);
     Route::post('stock-add', [StockController::class, 'stockAdd']);
     Route::post('stock-bulk-add', [StockController::class, 'stockBulkAdd']);
     Route::post('stock-update/{id}', [StockController::class, 'stockUpdate']);

@@ -838,5 +838,72 @@ class StockController extends Controller
             'message' => 'Stock summary retrieved successfully'
         ], 200);
     }
+
+    /**
+     * Get current stock quantities grouped by unique items
+     * GET /api/stock-current
+     * Returns the latest quantity for each unique stock item (brand, size, color)
+     */
+    public function stockCurrent(Request $request)
+    {
+        // Get all unique stock combinations
+        $uniqueStocks = Stock::select('brand', 'size', 'color')
+            ->groupBy('brand', 'size', 'color')
+            ->get();
+
+        $currentStocks = [];
+
+        foreach ($uniqueStocks as $uniqueStock) {
+            // Get the most recent entry for this combination
+            $latestStock = Stock::where('brand', $uniqueStock->brand)
+                ->where(function($query) use ($uniqueStock) {
+                    if ($uniqueStock->size) {
+                        $query->where('size', $uniqueStock->size);
+                    } else {
+                        $query->whereNull('size');
+                    }
+                })
+                ->where(function($query) use ($uniqueStock) {
+                    if ($uniqueStock->color) {
+                        $query->where('color', $uniqueStock->color);
+                    } else {
+                        $query->whereNull('color');
+                    }
+                })
+                ->orderBy('stock_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($latestStock) {
+                $currentStocks[] = [
+                    'id' => $latestStock->id,
+                    'brand' => $latestStock->brand,
+                    'size' => $latestStock->size,
+                    'color' => $latestStock->color,
+                    'current_quantity' => $latestStock->quantity,
+                    'stock_date' => $latestStock->stock_date,
+                    'notes' => $latestStock->notes,
+                    'last_updated' => $latestStock->updated_at,
+                ];
+            }
+        }
+
+        // Sort by brand, size, color
+        usort($currentStocks, function($a, $b) {
+            $brandCompare = strcmp($a['brand'], $b['brand']);
+            if ($brandCompare !== 0) return $brandCompare;
+            
+            $sizeCompare = strcmp($a['size'] ?? '', $b['size'] ?? '');
+            if ($sizeCompare !== 0) return $sizeCompare;
+            
+            return strcmp($a['color'] ?? '', $b['color'] ?? '');
+        });
+
+        return response([
+            'data' => $currentStocks,
+            'total_items' => count($currentStocks),
+            'message' => 'Current stock quantities retrieved successfully'
+        ], 200);
+    }
 }
 

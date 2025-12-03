@@ -112,7 +112,60 @@ GET /api/stock-list?date=2025-12-13
 
 ---
 
-#### 2. Add New Stock
+#### 2. Get Current Stock Quantities
+Get the current/latest quantity for each unique stock item, grouped by brand, size, and color.
+
+**Endpoint:** `GET /api/stock-current`
+
+**No Parameters Required**
+
+**Example Request:**
+```bash
+GET /api/stock-current
+```
+
+**Example Response:**
+```json
+{
+  "data": [
+    {
+      "id": 5,
+      "brand": "samsung",
+      "size": "256",
+      "color": "black",
+      "current_quantity": 15,
+      "stock_date": "2025-12-14",
+      "notes": "Latest update",
+      "last_updated": "2025-12-14T15:30:00.000000Z"
+    },
+    {
+      "id": 8,
+      "brand": "apple",
+      "size": "128",
+      "color": "white",
+      "current_quantity": 8,
+      "stock_date": "2025-12-13",
+      "notes": "Current stock",
+      "last_updated": "2025-12-13T14:20:00.000000Z"
+    }
+  ],
+  "total_items": 2,
+  "message": "Current stock quantities retrieved successfully"
+}
+```
+
+**Response Fields:**
+- `id`: Latest stock entry ID
+- `current_quantity`: Most recent quantity for this item
+- `stock_date`: Date of the latest entry
+- `last_updated`: Timestamp of last update
+- `total_items`: Total number of unique stock items
+
+**Use Case:** This endpoint is perfect for showing current inventory levels, as it automatically groups by unique items and shows only the latest quantity for each.
+
+---
+
+#### 3. Add New Stock
 Add a new stock entry. If an entry exists for the same brand, size, color, and date, it will be updated instead.
 
 **Endpoint:** `POST /api/stock-add`
@@ -161,7 +214,7 @@ curl -X POST "http://127.0.0.1:8000/api/stock-add" \
 
 ---
 
-#### 3. Bulk Add Stock
+#### 4. Bulk Add Stock
 Add multiple stock entries at once for a specific date.
 
 **Endpoint:** `POST /api/stock-bulk-add`
@@ -213,7 +266,7 @@ curl -X POST "http://127.0.0.1:8000/api/stock-bulk-add" \
 
 ---
 
-#### 4. Update Stock (Creates New Date-wise Entry)
+#### 5. Update Stock (Creates New Date-wise Entry)
 Update stock by ID. **Important:** This creates a new entry with the specified date instead of modifying the existing record. This allows you to track stock changes over time.
 
 **Endpoint:** `POST /api/stock-update/{id}`
@@ -268,7 +321,7 @@ curl -X POST "http://127.0.0.1:8000/api/stock-update/1" \
 
 ---
 
-#### 5. Bulk Update Stock (Creates New Date-wise Entries)
+#### 6. Bulk Update Stock (Creates New Date-wise Entries)
 Update multiple stocks at once. Each update creates a new entry with the specified date, allowing you to track stock changes over time for multiple items.
 
 **Endpoint:** `POST /api/stock-bulk-update`
@@ -367,7 +420,7 @@ curl -X POST "http://127.0.0.1:8000/api/stock-bulk-update" \
 
 ---
 
-#### 6. Delete Stock
+#### 7. Delete Stock
 Delete a stock entry by ID.
 
 **Endpoint:** `GET /api/stock-delete/{id}`
@@ -386,7 +439,7 @@ curl -X GET "http://127.0.0.1:8000/api/stock-delete/1"
 
 ---
 
-#### 7. Date-wise Stock Report
+#### 8. Date-wise Stock Report
 Get a detailed report for a specific date showing added, minus, and remaining quantities.
 
 **Endpoint:** `GET /api/stock-date-report`
@@ -432,7 +485,7 @@ GET /api/stock-date-report?date=2025-12-13&brand=samsung&size=256&color=black
 
 ---
 
-#### 8. Daily Report
+#### 9. Daily Report
 Get daily report comparing current date with previous date, showing added and removed quantities.
 
 **Endpoint:** `GET /api/stock-daily-report`
@@ -479,7 +532,7 @@ GET /api/stock-daily-report?date=2025-12-13
 
 ---
 
-#### 9. Weekly Report
+#### 10. Weekly Report
 Get weekly report with daily breakdown, showing added and removed quantities for each day.
 
 **Endpoint:** `GET /api/stock-weekly-report`
@@ -525,7 +578,7 @@ GET /api/stock-weekly-report?week_start=2025-12-09
 
 ---
 
-#### 10. Monthly Report
+#### 11. Monthly Report
 Get monthly report with daily breakdown, showing added and removed quantities for each day.
 
 **Endpoint:** `GET /api/stock-monthly-report`
@@ -572,7 +625,7 @@ GET /api/stock-monthly-report?month=2025-12
 
 ---
 
-#### 11. Stock Summary
+#### 12. Stock Summary
 Get stock summary aggregated by brand, size, and color for a date range.
 
 **Endpoint:** `GET /api/stock-summary`

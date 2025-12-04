@@ -575,6 +575,7 @@ class StockController extends Controller
                 'brand' => $stock->brand,
                 'size' => $stock->size,
                 'color' => $stock->color,
+                'quantity' => $remaining,
                 'add_new' => $addNew,
                 'minus' => $minus,
                 'remaining' => $remaining,

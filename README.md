@@ -625,7 +625,65 @@ GET /api/stock-monthly-report?month=2025-12
 
 ---
 
-#### 12. Stock Summary
+#### 12. Date Range Report
+Get stock report for a custom date range with daily breakdown showing added and removed quantities. Only shows dates that have data.
+
+**Endpoint:** `GET /api/stock-date-range-report`
+
+**Query Parameters:**
+- `from_date` (required): Start date (format: YYYY-MM-DD)
+- `to_date` (required): End date (format: YYYY-MM-DD)
+
+**Example Request:**
+```bash
+GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10
+```
+
+**Example Response:**
+```json
+{
+  "data": {
+    "2025-12-03": [
+      {
+        "id": 4,
+        "brand": "Apple",
+        "size": "256",
+        "color": "Black",
+        "quantity": 6,
+        "previous_quantity": 0,
+        "add_new": 6,
+        "minus": 0,
+        "change": 6,
+        "change_type": "plus",
+        "change_text": "+6",
+        "stock_date": "2025-12-03T00:00:00.000000Z"
+      }
+    ],
+    "2025-12-05": [...]
+  },
+  "from_date": "2025-12-01",
+  "to_date": "2025-12-10",
+  "days_with_data": 2,
+  "total_days": 10,
+  "message": "Date range report retrieved successfully"
+}
+```
+
+**Response Fields:**
+- `data`: Daily breakdown (only dates with data)
+- `days_with_data`: Number of days that have stock entries
+- `total_days`: Total days in the requested range
+- Each day shows: `add_new`, `minus`, `change`, `quantity`, etc.
+
+**Benefits:**
+- ✅ Flexible date range selection
+- ✅ Only returns dates with data (no empty arrays)
+- ✅ Perfect for custom period analysis
+- ✅ Shows add/remove quantities for each day
+
+---
+
+#### 13. Stock Summary
 Get stock summary aggregated by brand, size, and color for a date range.
 
 **Endpoint:** `GET /api/stock-summary`

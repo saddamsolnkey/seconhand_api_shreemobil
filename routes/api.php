@@ -62,6 +62,7 @@ Route::group([
     Route::get('stock-daily-report', [StockController::class, 'dailyReport']);
     Route::get('stock-weekly-report', [StockController::class, 'weeklyReport']);
     Route::get('stock-monthly-report', [StockController::class, 'monthlyReport']);
+    Route::get('stock-date-range-report', [StockController::class, 'stockDateRangeReport']);
     Route::get('stock-summary', [StockController::class, 'stockSummary']);
 
 });

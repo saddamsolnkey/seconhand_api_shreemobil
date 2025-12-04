@@ -815,6 +815,108 @@ class StockController extends Controller
     }
 
     /**
+     * Get stock report for a custom date range
+     * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10
+     * Shows daily breakdown with add_new and minus for each day in the range
+     */
+    public function stockDateRangeReport(Request $request)
+    {
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        
+        // Validation
+        if (!$fromDate || !$toDate) {
+            return response([
+                'error' => 'Both from_date and to_date are required',
+                'message' => 'Please provide from_date and to_date parameters (format: YYYY-MM-DD)'
+            ], 400);
+        }
+        
+        $startDate = Carbon::parse($fromDate);
+        $endDate = Carbon::parse($toDate);
+        
+        // Validate date range
+        if ($startDate->gt($endDate)) {
+            return response([
+                'error' => 'Invalid date range',
+                'message' => 'from_date must be before or equal to to_date'
+            ], 400);
+        }
+
+        // Get all stocks in the date range
+        $stocks = Stock::whereBetween('stock_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('stock_date')
+            ->orderBy('brand')
+            ->orderBy('size')
+            ->orderBy('color')
+            ->get();
+
+        // Group by date
+        $dailyReports = [];
+        $dates = [];
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            $dateStr = $date->toDateString();
+            $dates[] = $dateStr;
+            
+            $dayStocks = $stocks->where('stock_date', $dateStr);
+            
+            // Skip empty dates
+            if ($dayStocks->isEmpty()) {
+                continue;
+            }
+            
+            $previousDate = $date->copy()->subDay();
+            $previousStocks = Stock::where('stock_date', $previousDate->toDateString())
+                ->get()
+                ->keyBy(function ($item) {
+                    return $item->brand . '|' . $item->size . '|' . $item->color;
+                });
+
+            $dayReport = [];
+            foreach ($dayStocks as $current) {
+                $key = $current->brand . '|' . $current->size . '|' . $current->color;
+                $previous = $previousStocks->get($key);
+
+                $previousQuantity = $previous ? $previous->quantity : 0;
+                $change = $current->quantity - $previousQuantity;
+                $changeType = $change > 0 ? 'plus' : ($change < 0 ? 'minus' : 'no_change');
+                $changeText = $change > 0 ? "+$change" : ($change < 0 ? "$change" : "0");
+                
+                // Calculate added and removed quantities
+                $addNew = $change > 0 ? $change : 0;
+                $minus = $change < 0 ? abs($change) : 0;
+
+                $dayReport[] = [
+                    'id' => $current->id,
+                    'brand' => $current->brand,
+                    'size' => $current->size,
+                    'color' => $current->color,
+                    'quantity' => $current->quantity,
+                    'previous_quantity' => $previousQuantity,
+                    'add_new' => $addNew,
+                    'minus' => $minus,
+                    'change' => $change,
+                    'change_type' => $changeType,
+                    'change_text' => $changeText,
+                    'stock_date' => $current->stock_date,
+                ];
+            }
+
+            $dailyReports[$dateStr] = $dayReport;
+        }
+
+        return response([
+            'data' => $dailyReports,
+            'from_date' => $startDate->toDateString(),
+            'to_date' => $endDate->toDateString(),
+            'days_with_data' => count($dailyReports),
+            'total_days' => $startDate->diffInDays($endDate) + 1,
+            'message' => 'Date range report retrieved successfully'
+        ], 200);
+    }
+
+    /**
      * Get stock summary by date range
      * GET /api/stock-summary?from_date=2025-11-01&to_date=2025-11-30
      */

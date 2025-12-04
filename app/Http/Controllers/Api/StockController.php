@@ -859,7 +859,10 @@ class StockController extends Controller
             $dateStr = $date->toDateString();
             $dates[] = $dateStr;
             
-            $dayStocks = $stocks->where('stock_date', $dateStr);
+            // Filter stocks by comparing date strings
+            $dayStocks = $stocks->filter(function($stock) use ($dateStr) {
+                return Carbon::parse($stock->stock_date)->toDateString() === $dateStr;
+            });
             
             // Skip empty dates
             if ($dayStocks->isEmpty()) {
@@ -867,7 +870,7 @@ class StockController extends Controller
             }
             
             $previousDate = $date->copy()->subDay();
-            $previousStocks = Stock::where('stock_date', $previousDate->toDateString())
+            $previousStocks = Stock::whereDate('stock_date', $previousDate->toDateString())
                 ->get()
                 ->keyBy(function ($item) {
                     return $item->brand . '|' . $item->size . '|' . $item->color;

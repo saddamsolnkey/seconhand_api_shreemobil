@@ -234,6 +234,7 @@ class ProductController extends Controller
         $product = Product::find($request->id);
         $product->mobile_name = $data['mobile_name'];
         $product->mobile_price = $data['mobile_price'];
+        $product->store_price = $data['store_price'] ?? null;
         $product->sell_status = $data['sell_status'];
         $product->buyerName = $data['buyerName'];
         $product->selling_price = $data['selling_price']; 

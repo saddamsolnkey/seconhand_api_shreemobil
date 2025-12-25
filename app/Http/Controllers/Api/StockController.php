@@ -185,7 +185,7 @@ class StockController extends Controller
 
         if ($stock) {
             // Update existing transaction
-            $stock->quantity = $data['quantity'];
+                $stock->quantity = $data['quantity'];
             if (isset($data['notes'])) {
                 $stock->notes = $data['notes'];
             }
@@ -256,7 +256,7 @@ class StockController extends Controller
 
             if ($stock) {
                 // Update existing
-                $stock->quantity = $stockData['quantity'];
+                    $stock->quantity = $stockData['quantity'];
                 if (isset($stockData['notes'])) {
                     $stock->notes = $stockData['notes'];
                 }
@@ -330,7 +330,7 @@ class StockController extends Controller
         
         if ($category !== null) {
             $previousQuery->where('category', $category);
-        } else {
+                } else {
             $previousQuery->whereNull('category');
         }
         
@@ -447,14 +447,14 @@ class StockController extends Controller
             $category = isset($stockUpdate['category']) ? $stockUpdate['category'] : $originalStock->category;
             $transactionType = isset($stockUpdate['transaction_type']) ? $stockUpdate['transaction_type'] : $originalStock->transaction_type;
             $newQuantity = $stockUpdate['quantity'];
-            
+
             // Get the previous quantity (from the most recent entry before update date)
             $previousQuery = Stock::where('brand', $brand)
                 ->where('transaction_type', $transactionType);
             
             if ($category !== null) {
                 $previousQuery->where('category', $category);
-            } else {
+                    } else {
                 $previousQuery->whereNull('category');
             }
             
@@ -557,19 +557,30 @@ class StockController extends Controller
      * Get date-wise stock report with added, minus, and remaining quantities
      * GET /api/stock-date-report?date=2015-12-13
      * GET /api/stock-date-report?date=2015-12-13&brand=samsung&category=iPhone
+     * GET /api/stock-date-report?date=2015-12-13&transaction_type=in
+     * GET /api/stock-date-report?date=2015-12-13&transaction_type=out
      * 
-     * Returns: brand, category, add_new (added quantity), minus (reduced quantity), remaining (final quantity)
+     * Returns: brand, category, transaction_type, add_new (added quantity), minus (reduced quantity), remaining (final quantity)
      */
     public function stockDateReport(Request $request)
     {
         $date = $request->get('date');
         $brand = $request->get('brand');
         $category = $request->get('category');
+        $transactionType = $request->get('transaction_type'); // 'in' or 'out'
 
         if (!$date) {
             return response([
                 'error' => 'Date is required',
                 'message' => 'Please provide date parameter (format: YYYY-MM-DD)'
+            ], 400);
+        }
+
+        // Validate transaction_type if provided
+        if ($transactionType && !in_array($transactionType, ['in', 'out'])) {
+            return response([
+                'error' => 'Invalid transaction_type',
+                'message' => 'transaction_type must be either "in" or "out"'
             ], 400);
         }
 
@@ -585,15 +596,19 @@ class StockController extends Controller
                 $query->where('category', $category);
             }
         }
+        if ($transactionType) {
+            $query->where('transaction_type', $transactionType);
+        }
 
         $stocks = $query->orderBy('brand')
             ->orderBy('category')
+            ->orderBy('transaction_type')
             ->get();
 
         $result = [];
         foreach ($stocks as $stock) {
             // Get previous quantity (from most recent entry before this date)
-            $previousStock = Stock::where('brand', $stock->brand)
+            $previousQuery = Stock::where('brand', $stock->brand)
                 ->where(function($q) use ($stock) {
                     if ($stock->category) {
                         $q->where('category', $stock->category);
@@ -601,11 +616,12 @@ class StockController extends Controller
                         $q->whereNull('category');
                     }
                 })
+                ->where('transaction_type', $stock->transaction_type)
                 ->where('stock_date', '<', $date)
                 ->orderBy('stock_date', 'desc')
                 ->first();
             
-            $previousQuantity = $previousStock ? $previousStock->quantity : 0;
+            $previousQuantity = $previousQuery ? $previousQuery->quantity : 0;
             $currentQuantity = $stock->quantity;
             $change = $currentQuantity - $previousQuantity;
             
@@ -619,6 +635,7 @@ class StockController extends Controller
                 'date' => $stock->stock_date,
                 'brand' => $stock->brand,
                 'category' => $stock->category,
+                'transaction_type' => $stock->transaction_type,
                 'quantity' => $remaining,
                 'add_new' => $addNew,
                 'minus' => $minus,
@@ -628,11 +645,29 @@ class StockController extends Controller
             ];
         }
 
-        return response([
+        $response = [
             'data' => $result,
             'date' => $date,
             'message' => 'Date-wise stock report retrieved successfully'
-        ], 200);
+        ];
+
+        // Add filter information if applied
+        $filters = [];
+        if ($brand) {
+            $filters['brand'] = $brand;
+        }
+        if ($category !== null) {
+            $filters['category'] = $category;
+        }
+        if ($transactionType) {
+            $filters['transaction_type'] = $transactionType;
+        }
+        
+        if (!empty($filters)) {
+            $response['filters'] = $filters;
+        }
+
+        return response($response, 200);
     }
 
     /**
@@ -1004,7 +1039,7 @@ class StockController extends Controller
             if ($uniqueStock->category) {
                 $queryIn->where('category', $uniqueStock->category);
                 $queryOut->where('category', $uniqueStock->category);
-            } else {
+                    } else {
                 $queryIn->whereNull('category');
                 $queryOut->whereNull('category');
             }
@@ -1018,15 +1053,15 @@ class StockController extends Controller
             
             if ($uniqueStock->category) {
                 $latestQuery->where('category', $uniqueStock->category);
-            } else {
+                    } else {
                 $latestQuery->whereNull('category');
-            }
+                    }
             
             $latestStock = $latestQuery->orderBy('stock_date', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
 
-            $currentStocks[] = [
+                $currentStocks[] = [
                 'id' => $latestStock ? $latestStock->id : null,
                 'brand' => $uniqueStock->brand,
                 'category' => $uniqueStock->category,
@@ -1216,4 +1251,5 @@ class StockController extends Controller
         ], 200);
     }
 }
+
 

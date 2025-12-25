@@ -839,3 +839,9 @@ cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && php artisan migrat
 cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && curl -s -X POST "http://127.0.0.1:8000/api/stock-add" -H "Content-Type: application/json" -d '{"brand":"test-brand-only"}' | python3 -m json.tool
 
 cd /Users/saddam/Documents/my_php/seconhand_api_shreemobil && curl -s -X POST "http://127.0.0.1:8000/api/stock-bulk-add" -H "Content-Type: application/json" -d '{"stocks":[{"brand":"bulk-test-1"},{"brand":"bulk-test-2","quantity":5}]}' | python3 -m json.tool
+
+php artisan migrate
+
+php artisan cache:clear
+php artisan config:clear
+php artisan route:cache

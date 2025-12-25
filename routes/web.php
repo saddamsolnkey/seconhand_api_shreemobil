@@ -53,9 +53,11 @@ Route::post('users/update/{id}', [UserController::class, 'update'])->name('admin
 Route::delete('user/delete/{id}', [UserController::class, 'delete'])->name('admin.user.delete');
 
 // Stock Management
-Route::get('stocks', function () {
-    return view('admin.stocks.index');
-})->name('admin.stocks');
+Route::get('stocks', [App\Http\Controllers\Admin\StockController::class, 'index'])->name('admin.stocks');
+Route::get('stocks/list', [App\Http\Controllers\Admin\StockController::class, 'getStockList'])->name('admin.stocks.list');
+Route::get('stocks/current', [App\Http\Controllers\Admin\StockController::class, 'getCurrentStock'])->name('admin.stocks.current');
+Route::get('stocks/transactions', [App\Http\Controllers\Admin\StockController::class, 'getTransactionsByDate'])->name('admin.stocks.transactions');
+Route::get('stocks/brands-grouped', [App\Http\Controllers\Admin\StockController::class, 'getBrandsGroupedByCategory'])->name('admin.stocks.brands-grouped');
 
 //});
 });

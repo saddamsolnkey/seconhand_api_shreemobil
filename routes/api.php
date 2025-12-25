@@ -64,6 +64,8 @@ Route::group([
     Route::get('stock-monthly-report', [StockController::class, 'monthlyReport']);
     Route::get('stock-date-range-report', [StockController::class, 'stockDateRangeReport']);
     Route::get('stock-summary', [StockController::class, 'stockSummary']);
+    Route::get('stock-transactions-by-date', [StockController::class, 'stockTransactionsByDate']);
+    Route::get('stock-brands-grouped', [StockController::class, 'stockBrandsGrouped']);
 
 });
 

@@ -28,8 +28,10 @@ class StockController extends Controller
         
         $stocks = $query->orderBy('stock_date', 'desc')
             ->orderBy('brand')
+            ->orderBy('category')
             ->orderBy('size')
             ->orderBy('color')
+            ->orderBy('transaction_type')
             ->get();
 
         return response([
@@ -42,18 +44,43 @@ class StockController extends Controller
     /**
      * Add or update stock for a date (single item)
      * POST /api/stock-add
-     * Only brand is required, other fields are optional
+     * Can add both in and out transactions at the same time
+     * Accepts: quantity_in, quantity_out, or both
      */
     public function stockAdd(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'brand' => 'required|string|max:255',
+            'brand' => 'required|in:Apple,Samsung,OPPO,vivo',
+            'category' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:255',
-            'quantity' => 'nullable|integer|min:0',
+            'quantity' => 'nullable|integer|min:1', // For backward compatibility
+            'quantity_in' => 'nullable|integer|min:1', // New: quantity for 'in' transaction
+            'quantity_out' => 'nullable|integer|min:1', // New: quantity for 'out' transaction
+            'transaction_type' => 'nullable|in:in,out', // Optional if using quantity_in/quantity_out
             'stock_date' => 'nullable|date',
             'notes' => 'nullable|string',
+            'notes_in' => 'nullable|string', // Separate notes for 'in' transaction
+            'notes_out' => 'nullable|string', // Separate notes for 'out' transaction
         ]);
+
+        // Validate that at least one quantity is provided
+        if (!isset($request->quantity) && !isset($request->quantity_in) && !isset($request->quantity_out)) {
+            return response([
+                'error' => ['quantity' => ['At least one quantity (quantity, quantity_in, or quantity_out) must be provided']],
+                'message' => 'Validation Error'
+            ], 422);
+        }
+
+        // If using old format (quantity + transaction_type), validate it
+        if (isset($request->quantity) && !isset($request->quantity_in) && !isset($request->quantity_out)) {
+            if (!isset($request->transaction_type)) {
+                return response([
+                    'error' => ['transaction_type' => ['Transaction type is required when using quantity field']],
+                    'message' => 'Validation Error'
+                ], 422);
+            }
+        }
 
         if ($validator->fails()) {
             return response([
@@ -63,23 +90,107 @@ class StockController extends Controller
         }
 
         $data = $request->all();
+        $results = [];
+        $created = 0;
+        $updated = 0;
         
-        // Set default values if not provided
-        if (!isset($data['quantity'])) {
-            $data['quantity'] = 0;
-        }
-        if (!isset($data['stock_date'])) {
-            $data['stock_date'] = Carbon::today()->toDateString();
-        }
-        if (!isset($data['size'])) {
-            $data['size'] = null;
-        }
-        if (!isset($data['color'])) {
-            $data['color'] = null;
+        // Set default date if not provided
+        $stockDate = isset($data['stock_date']) ? $data['stock_date'] : Carbon::today()->toDateString();
+        $category = isset($data['category']) ? $data['category'] : null;
+        $size = isset($data['size']) ? $data['size'] : null;
+        $color = isset($data['color']) ? $data['color'] : null;
+        $brand = $data['brand'];
+        
+        // Process IN transaction if quantity_in is provided
+        if (isset($data['quantity_in']) && $data['quantity_in'] > 0) {
+            $inData = [
+                'brand' => $brand,
+                'category' => $category,
+                'size' => $size,
+                'color' => $color,
+                'quantity' => $data['quantity_in'],
+                'transaction_type' => 'in',
+                'stock_date' => $stockDate,
+                'notes' => isset($data['notes_in']) ? $data['notes_in'] : (isset($data['notes']) ? $data['notes'] : null),
+            ];
+            
+            $result = $this->createOrUpdateStock($inData);
+            $results['in'] = $result['stock'];
+            if ($result['created']) $created++;
+            else $updated++;
         }
         
-        // Check if stock entry already exists (match by brand, size, color, and date)
-        $query = Stock::where('brand', $data['brand']);
+        // Process OUT transaction if quantity_out is provided
+        if (isset($data['quantity_out']) && $data['quantity_out'] > 0) {
+            $outData = [
+                'brand' => $brand,
+                'category' => $category,
+                'size' => $size,
+                'color' => $color,
+                'quantity' => $data['quantity_out'],
+                'transaction_type' => 'out',
+                'stock_date' => $stockDate,
+                'notes' => isset($data['notes_out']) ? $data['notes_out'] : (isset($data['notes']) ? $data['notes'] : null),
+            ];
+            
+            $result = $this->createOrUpdateStock($outData);
+            $results['out'] = $result['stock'];
+            if ($result['created']) $created++;
+            else $updated++;
+        }
+        
+        // Process old format (quantity + transaction_type) for backward compatibility
+        if (isset($data['quantity']) && isset($data['transaction_type']) && 
+            !isset($data['quantity_in']) && !isset($data['quantity_out'])) {
+            $oldData = [
+                'brand' => $brand,
+                'category' => $category,
+                'size' => $size,
+                'color' => $color,
+                'quantity' => $data['quantity'],
+                'transaction_type' => $data['transaction_type'],
+                'stock_date' => $stockDate,
+                'notes' => isset($data['notes']) ? $data['notes'] : null,
+            ];
+            
+            $result = $this->createOrUpdateStock($oldData);
+            $results[$data['transaction_type']] = $result['stock'];
+            if ($result['created']) $created++;
+            else $updated++;
+        }
+        
+        $message = 'Stock transaction';
+        if (count($results) > 1) {
+            $message = 'Stock transactions';
+        }
+        $message .= ' added successfully';
+        if ($updated > 0) {
+            $message .= " (Created: $created, Updated: $updated)";
+        }
+        
+        return response([
+            'data' => $results,
+            'created' => $created,
+            'updated' => $updated,
+            'message' => $message
+        ], 201);
+    }
+    
+    /**
+     * Helper method to create or update stock transaction
+     */
+    private function createOrUpdateStock($data)
+    {
+        // Check if transaction already exists
+        $query = Stock::where('brand', $data['brand'])
+            ->where('transaction_type', $data['transaction_type']);
+        
+        // Handle category (nullable)
+        if (isset($data['category']) && $data['category'] !== null) {
+            $query->where('category', $data['category']);
+        } else {
+            $query->whereNull('category');
+        }
         
         if (isset($data['size']) && $data['size'] !== null) {
             $query->where('size', $data['size']);
@@ -97,33 +208,22 @@ class StockController extends Controller
         $stock = $query->first();
 
         if ($stock) {
-            // Update existing
-            if (isset($data['quantity'])) {
-                $stock->quantity = $data['quantity'];
-            }
+            // Update existing transaction
+            $stock->quantity = $data['quantity'];
             if (isset($data['notes'])) {
                 $stock->notes = $data['notes'];
             }
-            if (isset($data['size'])) {
-                $stock->size = $data['size'];
-            }
-            if (isset($data['color'])) {
-                $stock->color = $data['color'];
+            if (isset($data['category'])) {
+                $stock->category = $data['category'];
             }
             $stock->save();
             
-            return response([
-                'data' => $stock,
-                'message' => 'Stock updated successfully'
-            ], 200);
+            return ['stock' => $stock, 'created' => false];
         } else {
-            // Create new
+            // Create new transaction
             $stock = Stock::create($data);
             
-            return response([
-                'data' => $stock,
-                'message' => 'Stock added successfully'
-            ], 201);
+            return ['stock' => $stock, 'created' => true];
         }
     }
 
@@ -137,10 +237,12 @@ class StockController extends Controller
         $validator = Validator::make($request->all(), [
             'stock_date' => 'nullable|date',
             'stocks' => 'required|array|min:1',
-            'stocks.*.brand' => 'required|string|max:255',
+            'stocks.*.brand' => 'required|in:Apple,Samsung,OPPO,vivo',
+            'stocks.*.category' => 'nullable|string|max:255',
             'stocks.*.size' => 'nullable|string|max:255',
             'stocks.*.color' => 'nullable|string|max:255',
-            'stocks.*.quantity' => 'nullable|integer|min:0',
+            'stocks.*.quantity' => 'required|integer|min:1',
+            'stocks.*.transaction_type' => 'required|in:in,out',
             'stocks.*.notes' => 'nullable|string',
         ]);
 
@@ -159,8 +261,8 @@ class StockController extends Controller
 
         foreach ($request->stocks as $stockData) {
             // Set default values if not provided
-            if (!isset($stockData['quantity'])) {
-                $stockData['quantity'] = 0;
+            if (!isset($stockData['category'])) {
+                $stockData['category'] = null;
             }
             if (!isset($stockData['size'])) {
                 $stockData['size'] = null;
@@ -171,7 +273,15 @@ class StockController extends Controller
             $stockData['stock_date'] = $stockDate;
             
             // Check if stock entry already exists
-            $query = Stock::where('brand', $stockData['brand']);
+            $query = Stock::where('brand', $stockData['brand'])
+                ->where('transaction_type', $stockData['transaction_type']);
+            
+            // Handle category
+            if (isset($stockData['category']) && $stockData['category'] !== null) {
+                $query->where('category', $stockData['category']);
+            } else {
+                $query->whereNull('category');
+            }
             
             if (isset($stockData['size']) && $stockData['size'] !== null) {
                 $query->where('size', $stockData['size']);
@@ -190,17 +300,12 @@ class StockController extends Controller
 
             if ($stock) {
                 // Update existing
-                if (isset($stockData['quantity'])) {
-                    $stock->quantity = $stockData['quantity'];
-                }
+                $stock->quantity = $stockData['quantity'];
                 if (isset($stockData['notes'])) {
                     $stock->notes = $stockData['notes'];
                 }
-                if (isset($stockData['size'])) {
-                    $stock->size = $stockData['size'];
-                }
-                if (isset($stockData['color'])) {
-                    $stock->color = $stockData['color'];
+                if (isset($stockData['category'])) {
+                    $stock->category = $stockData['category'];
                 }
                 $stock->save();
                 $updated++;
@@ -224,8 +329,8 @@ class StockController extends Controller
      * Update stock by ID - creates new entry with date-wise data
      * POST /api/stock-update/{id}
      * When updating, creates a new entry with current date instead of modifying existing
-     * Required: quantity
-     * Optional: stock_date (defaults to today), notes
+     * Required: brand, transaction_type, quantity
+     * Optional: category, size, color, stock_date (defaults to today), notes
      */
     public function stockUpdate(Request $request, $id)
     {
@@ -239,7 +344,12 @@ class StockController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'quantity' => 'required|integer|min:0',
+            'brand' => 'required|in:Apple,Samsung,OPPO,vivo',
+            'category' => 'nullable|string|max:255',
+            'size' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:255',
+            'transaction_type' => 'required|in:in,out',
+            'quantity' => 'required|integer|min:1',
             'stock_date' => 'nullable|date',
             'notes' => 'nullable|string',
         ]);
@@ -254,43 +364,63 @@ class StockController extends Controller
         // Get the update date (default to today)
         $updateDate = $request->has('stock_date') ? $request->stock_date : Carbon::today()->toDateString();
         
-        // Get the previous quantity (from the most recent entry for this brand/size/color before update date)
-        $previousStock = Stock::where('brand', $stock->brand)
-            ->where(function($query) use ($stock) {
-                if ($stock->size) {
-                    $query->where('size', $stock->size);
-                } else {
-                    $query->whereNull('size');
-                }
-            })
-            ->where(function($query) use ($stock) {
-                if ($stock->color) {
-                    $query->where('color', $stock->color);
-                } else {
-                    $query->whereNull('color');
-                }
-            })
-            ->where('stock_date', '<', $updateDate)
+        // Use request data or fallback to existing stock data
+        $brand = $request->has('brand') ? $request->brand : $stock->brand;
+        $category = $request->has('category') ? $request->category : $stock->category;
+        $size = $request->has('size') ? $request->size : $stock->size;
+        $color = $request->has('color') ? $request->color : $stock->color;
+        $transactionType = $request->has('transaction_type') ? $request->transaction_type : $stock->transaction_type;
+        $newQuantity = $request->quantity;
+        
+        // Get the previous quantity (from the most recent entry for this brand/category/size/color/transaction_type before update date)
+        $previousQuery = Stock::where('brand', $brand)
+            ->where('transaction_type', $transactionType);
+        
+        if ($category !== null) {
+            $previousQuery->where('category', $category);
+        } else {
+            $previousQuery->whereNull('category');
+        }
+        
+        if ($size !== null) {
+            $previousQuery->where('size', $size);
+        } else {
+            $previousQuery->whereNull('size');
+        }
+        
+        if ($color !== null) {
+            $previousQuery->where('color', $color);
+        } else {
+            $previousQuery->whereNull('color');
+        }
+        
+        $previousStock = $previousQuery->where('stock_date', '<', $updateDate)
             ->orderBy('stock_date', 'desc')
             ->first();
         
         $previousQuantity = $previousStock ? $previousStock->quantity : 0;
-        $newQuantity = $request->quantity;
         $change = $newQuantity - $previousQuantity;
         $addNew = $change > 0 ? $change : 0;
         $minus = $change < 0 ? abs($change) : 0;
 
-        // Check if entry already exists for this date
-        $existingQuery = Stock::where('brand', $stock->brand);
+        // Check if entry already exists for this date with same brand/category/size/color/transaction_type
+        $existingQuery = Stock::where('brand', $brand)
+            ->where('transaction_type', $transactionType);
         
-        if ($stock->size !== null) {
-            $existingQuery->where('size', $stock->size);
+        if ($category !== null) {
+            $existingQuery->where('category', $category);
+        } else {
+            $existingQuery->whereNull('category');
+        }
+        
+        if ($size !== null) {
+            $existingQuery->where('size', $size);
         } else {
             $existingQuery->whereNull('size');
         }
         
-        if ($stock->color !== null) {
-            $existingQuery->where('color', $stock->color);
+        if ($color !== null) {
+            $existingQuery->where('color', $color);
         } else {
             $existingQuery->whereNull('color');
         }
@@ -303,6 +433,9 @@ class StockController extends Controller
             $existingStock->quantity = $newQuantity;
             if ($request->has('notes')) {
                 $existingStock->notes = $request->notes;
+            }
+            if ($request->has('category')) {
+                $existingStock->category = $request->category;
             }
             $existingStock->save();
             
@@ -319,9 +452,11 @@ class StockController extends Controller
         } else {
             // Create new entry with date-wise data
             $newStock = Stock::create([
-                'brand' => $stock->brand,
-                'size' => $stock->size,
-                'color' => $stock->color,
+                'brand' => $brand,
+                'category' => $category,
+                'size' => $size,
+                'color' => $color,
+                'transaction_type' => $transactionType,
                 'quantity' => $newQuantity,
                 'stock_date' => $updateDate,
                 'notes' => $request->has('notes') ? $request->notes : $stock->notes,
@@ -352,7 +487,12 @@ class StockController extends Controller
             'stock_date' => 'nullable|date',
             'stocks' => 'required|array|min:1',
             'stocks.*.id' => 'required|integer|exists:stocks,id',
-            'stocks.*.quantity' => 'required|integer|min:0',
+            'stocks.*.brand' => 'required|in:Apple,Samsung,OPPO,vivo',
+            'stocks.*.category' => 'nullable|string|max:255',
+            'stocks.*.size' => 'nullable|string|max:255',
+            'stocks.*.color' => 'nullable|string|max:255',
+            'stocks.*.transaction_type' => 'required|in:in,out',
+            'stocks.*.quantity' => 'required|integer|min:1',
             'stocks.*.notes' => 'nullable|string',
         ]);
 
@@ -378,43 +518,63 @@ class StockController extends Controller
                 continue;
             }
 
+            // Use request data or fallback to existing stock data
+            $brand = isset($stockUpdate['brand']) ? $stockUpdate['brand'] : $originalStock->brand;
+            $category = isset($stockUpdate['category']) ? $stockUpdate['category'] : $originalStock->category;
+            $size = isset($stockUpdate['size']) ? $stockUpdate['size'] : $originalStock->size;
+            $color = isset($stockUpdate['color']) ? $stockUpdate['color'] : $originalStock->color;
+            $transactionType = isset($stockUpdate['transaction_type']) ? $stockUpdate['transaction_type'] : $originalStock->transaction_type;
+            $newQuantity = $stockUpdate['quantity'];
+            
             // Get the previous quantity (from the most recent entry before update date)
-            $previousStock = Stock::where('brand', $originalStock->brand)
-                ->where(function($query) use ($originalStock) {
-                    if ($originalStock->size) {
-                        $query->where('size', $originalStock->size);
-                    } else {
-                        $query->whereNull('size');
-                    }
-                })
-                ->where(function($query) use ($originalStock) {
-                    if ($originalStock->color) {
-                        $query->where('color', $originalStock->color);
-                    } else {
-                        $query->whereNull('color');
-                    }
-                })
-                ->where('stock_date', '<', $stockDate)
+            $previousQuery = Stock::where('brand', $brand)
+                ->where('transaction_type', $transactionType);
+            
+            if ($category !== null) {
+                $previousQuery->where('category', $category);
+            } else {
+                $previousQuery->whereNull('category');
+            }
+            
+            if ($size !== null) {
+                $previousQuery->where('size', $size);
+            } else {
+                $previousQuery->whereNull('size');
+            }
+            
+            if ($color !== null) {
+                $previousQuery->where('color', $color);
+            } else {
+                $previousQuery->whereNull('color');
+            }
+            
+            $previousStock = $previousQuery->where('stock_date', '<', $stockDate)
                 ->orderBy('stock_date', 'desc')
                 ->first();
             
             $previousQuantity = $previousStock ? $previousStock->quantity : 0;
-            $newQuantity = $stockUpdate['quantity'];
             $change = $newQuantity - $previousQuantity;
             $addNew = $change > 0 ? $change : 0;
             $minus = $change < 0 ? abs($change) : 0;
 
             // Check if entry already exists for this date
-            $existingQuery = Stock::where('brand', $originalStock->brand);
+            $existingQuery = Stock::where('brand', $brand)
+                ->where('transaction_type', $transactionType);
             
-            if ($originalStock->size !== null) {
-                $existingQuery->where('size', $originalStock->size);
+            if ($category !== null) {
+                $existingQuery->where('category', $category);
+            } else {
+                $existingQuery->whereNull('category');
+            }
+            
+            if ($size !== null) {
+                $existingQuery->where('size', $size);
             } else {
                 $existingQuery->whereNull('size');
             }
             
-            if ($originalStock->color !== null) {
-                $existingQuery->where('color', $originalStock->color);
+            if ($color !== null) {
+                $existingQuery->where('color', $color);
             } else {
                 $existingQuery->whereNull('color');
             }
@@ -427,6 +587,9 @@ class StockController extends Controller
                 $existingStock->quantity = $newQuantity;
                 if (isset($stockUpdate['notes'])) {
                     $existingStock->notes = $stockUpdate['notes'];
+                }
+                if (isset($stockUpdate['category'])) {
+                    $existingStock->category = $stockUpdate['category'];
                 }
                 $existingStock->save();
                 $updated++;
@@ -441,9 +604,11 @@ class StockController extends Controller
             } else {
                 // Create new entry with date-wise data
                 $newStock = Stock::create([
-                    'brand' => $originalStock->brand,
-                    'size' => $originalStock->size,
-                    'color' => $originalStock->color,
+                    'brand' => $brand,
+                    'category' => $category,
+                    'size' => $size,
+                    'color' => $color,
+                    'transaction_type' => $transactionType,
                     'quantity' => $newQuantity,
                     'stock_date' => $stockDate,
                     'notes' => isset($stockUpdate['notes']) ? $stockUpdate['notes'] : $originalStock->notes,
@@ -948,56 +1113,100 @@ class StockController extends Controller
     /**
      * Get current stock quantities grouped by unique items
      * GET /api/stock-current
-     * Returns the latest quantity for each unique stock item (brand, size, color)
+     * Returns the latest quantity for each unique stock item (brand, category, size, color)
+     * Calculates total in and out quantities
      */
     public function stockCurrent(Request $request)
     {
         // Get all unique stock combinations
-        $uniqueStocks = Stock::select('brand', 'size', 'color')
-            ->groupBy('brand', 'size', 'color')
+        $uniqueStocks = Stock::select('brand', 'category', 'size', 'color')
+            ->groupBy('brand', 'category', 'size', 'color')
             ->get();
 
         $currentStocks = [];
 
         foreach ($uniqueStocks as $uniqueStock) {
-            // Get the most recent entry for this combination
-            $latestStock = Stock::where('brand', $uniqueStock->brand)
-                ->where(function($query) use ($uniqueStock) {
-                    if ($uniqueStock->size) {
-                        $query->where('size', $uniqueStock->size);
-                    } else {
-                        $query->whereNull('size');
-                    }
-                })
-                ->where(function($query) use ($uniqueStock) {
-                    if ($uniqueStock->color) {
-                        $query->where('color', $uniqueStock->color);
-                    } else {
-                        $query->whereNull('color');
-                    }
-                })
-                ->orderBy('stock_date', 'desc')
+            // Calculate total in and out quantities
+            $queryIn = Stock::where('brand', $uniqueStock->brand);
+            $queryOut = Stock::where('brand', $uniqueStock->brand);
+            
+            // Handle category
+            if ($uniqueStock->category) {
+                $queryIn->where('category', $uniqueStock->category);
+                $queryOut->where('category', $uniqueStock->category);
+            } else {
+                $queryIn->whereNull('category');
+                $queryOut->whereNull('category');
+            }
+            
+            // Handle size
+            if ($uniqueStock->size) {
+                $queryIn->where('size', $uniqueStock->size);
+                $queryOut->where('size', $uniqueStock->size);
+            } else {
+                $queryIn->whereNull('size');
+                $queryOut->whereNull('size');
+            }
+            
+            // Handle color
+            if ($uniqueStock->color) {
+                $queryIn->where('color', $uniqueStock->color);
+                $queryOut->where('color', $uniqueStock->color);
+            } else {
+                $queryIn->whereNull('color');
+                $queryOut->whereNull('color');
+            }
+            
+            $totalIn = $queryIn->where('transaction_type', 'in')->sum('quantity');
+            $totalOut = $queryOut->where('transaction_type', 'out')->sum('quantity');
+            $currentQuantity = $totalIn - $totalOut;
+
+            // Get latest transaction date
+            $latestQuery = Stock::where('brand', $uniqueStock->brand);
+            
+            if ($uniqueStock->category) {
+                $latestQuery->where('category', $uniqueStock->category);
+            } else {
+                $latestQuery->whereNull('category');
+            }
+            
+            if ($uniqueStock->size) {
+                $latestQuery->where('size', $uniqueStock->size);
+            } else {
+                $latestQuery->whereNull('size');
+            }
+            
+            if ($uniqueStock->color) {
+                $latestQuery->where('color', $uniqueStock->color);
+            } else {
+                $latestQuery->whereNull('color');
+            }
+            
+            $latestStock = $latestQuery->orderBy('stock_date', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
 
-            if ($latestStock) {
-                $currentStocks[] = [
-                    'id' => $latestStock->id,
-                    'brand' => $latestStock->brand,
-                    'size' => $latestStock->size,
-                    'color' => $latestStock->color,
-                    'current_quantity' => $latestStock->quantity,
-                    'stock_date' => $latestStock->stock_date,
-                    'notes' => $latestStock->notes,
-                    'last_updated' => $latestStock->updated_at,
-                ];
-            }
+            $currentStocks[] = [
+                'id' => $latestStock ? $latestStock->id : null,
+                'brand' => $uniqueStock->brand,
+                'category' => $uniqueStock->category,
+                'size' => $uniqueStock->size,
+                'color' => $uniqueStock->color,
+                'total_in' => $totalIn,
+                'total_out' => $totalOut,
+                'current_quantity' => $currentQuantity,
+                'last_transaction_date' => $latestStock ? $latestStock->stock_date : null,
+                'last_updated' => $latestStock ? $latestStock->updated_at : null,
+            ];
         }
 
-        // Sort by brand, size, color
+        // Sort by brand, category, size, color
         usort($currentStocks, function($a, $b) {
             $brandCompare = strcmp($a['brand'], $b['brand']);
             if ($brandCompare !== 0) return $brandCompare;
+            
+            $categoryCompare = strcmp($a['category'] ?? '', $b['category'] ?? '');
+            if ($categoryCompare !== 0) return $categoryCompare;
             
             $sizeCompare = strcmp($a['size'] ?? '', $b['size'] ?? '');
             if ($sizeCompare !== 0) return $sizeCompare;
@@ -1009,6 +1218,194 @@ class StockController extends Controller
             'data' => $currentStocks,
             'total_items' => count($currentStocks),
             'message' => 'Current stock quantities retrieved successfully'
+        ], 200);
+    }
+
+    /**
+     * Get brands grouped by category with available stock
+     * GET /api/stock-brands-grouped
+     * Returns brands grouped by category showing available stock
+     */
+    public function stockBrandsGrouped()
+    {
+        // Get all unique stock combinations
+        $uniqueStocks = Stock::select('brand', 'category', 'size', 'color')
+            ->groupBy('brand', 'category', 'size', 'color')
+            ->get();
+
+        $groupedData = [];
+
+        foreach ($uniqueStocks as $uniqueStock) {
+            // Calculate total in and out quantities
+            $queryIn = Stock::where('brand', $uniqueStock->brand);
+            $queryOut = Stock::where('brand', $uniqueStock->brand);
+            
+            // Handle category
+            if ($uniqueStock->category) {
+                $queryIn->where('category', $uniqueStock->category);
+                $queryOut->where('category', $uniqueStock->category);
+            } else {
+                $queryIn->whereNull('category');
+                $queryOut->whereNull('category');
+            }
+            
+            // Handle size
+            if ($uniqueStock->size) {
+                $queryIn->where('size', $uniqueStock->size);
+                $queryOut->where('size', $uniqueStock->size);
+            } else {
+                $queryIn->whereNull('size');
+                $queryOut->whereNull('size');
+            }
+            
+            // Handle color
+            if ($uniqueStock->color) {
+                $queryIn->where('color', $uniqueStock->color);
+                $queryOut->where('color', $uniqueStock->color);
+            } else {
+                $queryIn->whereNull('color');
+                $queryOut->whereNull('color');
+            }
+            
+            $totalIn = $queryIn->where('transaction_type', 'in')->sum('quantity');
+            $totalOut = $queryOut->where('transaction_type', 'out')->sum('quantity');
+            $currentQuantity = $totalIn - $totalOut;
+
+            // Skip items with zero or negative stock
+            if ($currentQuantity <= 0) {
+                continue;
+            }
+
+            $brand = $uniqueStock->brand;
+            $category = $uniqueStock->category ?? 'Uncategorized';
+
+            // Initialize brand if not exists
+            if (!isset($groupedData[$brand])) {
+                $groupedData[$brand] = [
+                    'brand' => $brand,
+                    'total_stock' => 0,
+                    'categories' => []
+                ];
+            }
+
+            // Initialize category if not exists
+            if (!isset($groupedData[$brand]['categories'][$category])) {
+                $groupedData[$brand]['categories'][$category] = [
+                    'category' => $category,
+                    'total_stock' => 0,
+                    'items' => []
+                ];
+            }
+
+            // Add item to category
+            $groupedData[$brand]['categories'][$category]['items'][] = [
+                'size' => $uniqueStock->size,
+                'color' => $uniqueStock->color,
+                'total_in' => $totalIn,
+                'total_out' => $totalOut,
+                'current_quantity' => $currentQuantity,
+            ];
+
+            // Update totals
+            $groupedData[$brand]['categories'][$category]['total_stock'] += $currentQuantity;
+            $groupedData[$brand]['total_stock'] += $currentQuantity;
+        }
+
+        // Convert to array format and sort
+        $result = [];
+        foreach ($groupedData as $brand => $brandData) {
+            $categories = [];
+            foreach ($brandData['categories'] as $category => $categoryData) {
+                $categories[] = $categoryData;
+            }
+            
+            // Sort categories by total stock (descending)
+            usort($categories, function($a, $b) {
+                return $b['total_stock'] - $a['total_stock'];
+            });
+
+            $result[] = [
+                'brand' => $brand,
+                'total_stock' => $brandData['total_stock'],
+                'categories' => $categories
+            ];
+        }
+
+        // Sort brands by total stock (descending)
+        usort($result, function($a, $b) {
+            return $b['total_stock'] - $a['total_stock'];
+        });
+
+        return response([
+            'data' => $result,
+            'message' => 'Brands grouped by category retrieved successfully'
+        ], 200);
+    }
+
+    /**
+     * Get in/out transactions by date
+     * GET /api/stock-transactions-by-date?date=2025-12-07&brand=Apple&category=iPhone
+     */
+    public function stockTransactionsByDate(Request $request)
+    {
+        $date = $request->get('date', Carbon::today()->toDateString());
+        $brand = $request->get('brand'); // Optional filter by brand
+        $category = $request->get('category'); // Optional filter by category
+
+        $query = Stock::where('stock_date', $date);
+        
+        if ($brand) {
+            $query->where('brand', $brand);
+        }
+        
+        if ($category) {
+            $query->where('category', $category);
+        }
+
+        $transactions = $query->orderBy('brand')
+            ->orderBy('category')
+            ->orderBy('size')
+            ->orderBy('color')
+            ->orderBy('transaction_type')
+            ->get();
+
+        // Group by item and show in/out totals
+        $result = [];
+        foreach ($transactions as $transaction) {
+            $key = $transaction->brand . '|' . ($transaction->category ?? '') . '|' . 
+                   ($transaction->size ?? '') . '|' . ($transaction->color ?? '');
+            
+            if (!isset($result[$key])) {
+                $result[$key] = [
+                    'brand' => $transaction->brand,
+                    'category' => $transaction->category,
+                    'size' => $transaction->size,
+                    'color' => $transaction->color,
+                    'in_quantity' => 0,
+                    'out_quantity' => 0,
+                    'transactions' => []
+                ];
+            }
+            
+            if ($transaction->transaction_type === 'in') {
+                $result[$key]['in_quantity'] += $transaction->quantity;
+            } else {
+                $result[$key]['out_quantity'] += $transaction->quantity;
+            }
+            
+            $result[$key]['transactions'][] = [
+                'id' => $transaction->id,
+                'transaction_type' => $transaction->transaction_type,
+                'quantity' => $transaction->quantity,
+                'notes' => $transaction->notes,
+                'created_at' => $transaction->created_at,
+            ];
+        }
+
+        return response([
+            'data' => array_values($result),
+            'date' => $date,
+            'message' => 'Stock transactions retrieved successfully for date'
         ], 200);
     }
 }

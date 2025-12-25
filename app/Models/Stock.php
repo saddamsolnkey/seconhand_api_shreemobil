@@ -12,10 +12,12 @@ class Stock extends Model
     protected $table = 'stocks';
 
     protected $fillable = [
-        'brand',
+        'brand', // enum: Apple, Samsung, OPPO, vivo
+        'category', // text/string type
         'size',
         'color',
-        'quantity',
+        'quantity', // Amount for this transaction (in or out)
+        'transaction_type', // 'in' or 'out'
         'stock_date',
         'notes',
     ];

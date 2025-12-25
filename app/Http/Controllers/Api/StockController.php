@@ -661,32 +661,11 @@ class StockController extends Controller
             ];
         }
 
-        $response = [
+        return response([
             'data' => $result,
             'date' => $date,
             'message' => 'Date-wise stock report retrieved successfully'
-        ];
-
-        // Add filter information if applied
-        $filters = [];
-        if ($brand) {
-            $filters['brand'] = $brand;
-        }
-        if ($category !== null) {
-            $filters['category'] = $category;
-        }
-        if ($transactionType) {
-            $filters['transaction_type'] = $transactionType;
-        }
-        if ($notesForIn) {
-            $filters['notes_for_in'] = $notesForIn;
-        }
-        
-        if (!empty($filters)) {
-            $response['filters'] = $filters;
-        }
-
-        return response($response, 200);
+        ], 200);
     }
 
     /**
@@ -1032,6 +1011,7 @@ class StockController extends Controller
                     'id' => $current->id,
                     'brand' => $current->brand,
                     'category' => $current->category,
+                    'transaction_type' => $current->transaction_type,
                     'quantity' => $current->quantity,
                     'previous_quantity' => $previousQuantity,
                     'add_new' => $addNew,
@@ -1040,41 +1020,21 @@ class StockController extends Controller
                     'change_type' => $changeType,
                     'change_text' => $changeText,
                     'stock_date' => $current->stock_date,
+                    'notes' => $current->notes,
                 ];
             }
 
             $dailyReports[$dateStr] = $dayReport;
         }
 
-        $response = [
+        return response([
             'data' => $dailyReports,
             'from_date' => $startDate->toDateString(),
             'to_date' => $endDate->toDateString(),
             'days_with_data' => count($dailyReports),
             'total_days' => $startDate->diffInDays($endDate) + 1,
             'message' => 'Date range report retrieved successfully'
-        ];
-
-        // Add filter information if applied
-        $filters = [];
-        if ($brand) {
-            $filters['brand'] = $brand;
-        }
-        if ($category !== null) {
-            $filters['category'] = $category;
-        }
-        if ($transactionType) {
-            $filters['transaction_type'] = $transactionType;
-        }
-        if ($notesForIn) {
-            $filters['notes_for_in'] = $notesForIn;
-        }
-        
-        if (!empty($filters)) {
-            $response['filters'] = $filters;
-        }
-
-        return response($response, 200);
+        ], 200);
     }
 
     /**

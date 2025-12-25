@@ -559,6 +559,7 @@ class StockController extends Controller
      * GET /api/stock-date-report?date=2015-12-13&brand=samsung&category=iPhone
      * GET /api/stock-date-report?date=2015-12-13&transaction_type=in
      * GET /api/stock-date-report?date=2015-12-13&transaction_type=out
+     * GET /api/stock-date-report?date=2015-12-13&notes_for_in=search_text
      * 
      * Returns: brand, category, transaction_type, add_new (added quantity), minus (reduced quantity), remaining (final quantity)
      */
@@ -568,6 +569,7 @@ class StockController extends Controller
         $brand = $request->get('brand');
         $category = $request->get('category');
         $transactionType = $request->get('transaction_type'); // 'in' or 'out'
+        $notesForIn = $request->get('notes_for_in'); // Filter notes for 'in' transactions
 
         if (!$date) {
             return response([
@@ -598,6 +600,20 @@ class StockController extends Controller
         }
         if ($transactionType) {
             $query->where('transaction_type', $transactionType);
+            // If transaction_type is 'out', notes_for_in filter doesn't apply
+            if ($notesForIn && $transactionType === 'in') {
+                $query->where('notes', 'LIKE', '%' . $notesForIn . '%');
+            }
+        } else {
+            // Filter notes for 'in' transactions when no specific transaction_type is set
+            if ($notesForIn) {
+                $query->where(function($q) use ($notesForIn) {
+                    $q->where(function($subQ) use ($notesForIn) {
+                        $subQ->where('transaction_type', 'in')
+                             ->where('notes', 'LIKE', '%' . $notesForIn . '%');
+                    })->orWhere('transaction_type', '!=', 'in');
+                });
+            }
         }
 
         $stocks = $query->orderBy('brand')
@@ -661,6 +677,9 @@ class StockController extends Controller
         }
         if ($transactionType) {
             $filters['transaction_type'] = $transactionType;
+        }
+        if ($notesForIn) {
+            $filters['notes_for_in'] = $notesForIn;
         }
         
         if (!empty($filters)) {
@@ -891,12 +910,20 @@ class StockController extends Controller
     /**
      * Get stock report for a custom date range
      * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10
+     * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10&brand=Apple
+     * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10&category=iPhone
+     * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10&transaction_type=in
+     * GET /api/stock-date-range-report?from_date=2025-12-01&to_date=2025-12-10&notes_for_in=search_text
      * Shows daily breakdown with add_new and minus for each day in the range
      */
     public function stockDateRangeReport(Request $request)
     {
         $fromDate = $request->get('from_date');
         $toDate = $request->get('to_date');
+        $brand = $request->get('brand');
+        $category = $request->get('category');
+        $transactionType = $request->get('transaction_type'); // 'in' or 'out'
+        $notesForIn = $request->get('notes_for_in'); // Filter notes for 'in' transactions
         
         // Validation
         if (!$fromDate || !$toDate) {
@@ -917,11 +944,49 @@ class StockController extends Controller
             ], 400);
         }
 
-        // Get all stocks in the date range
-        $stocks = Stock::whereBetween('stock_date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->orderBy('stock_date')
+        // Validate transaction_type if provided
+        if ($transactionType && !in_array($transactionType, ['in', 'out'])) {
+            return response([
+                'error' => 'Invalid transaction_type',
+                'message' => 'transaction_type must be either "in" or "out"'
+            ], 400);
+        }
+
+        // Get all stocks in the date range with filters
+        $query = Stock::whereBetween('stock_date', [$startDate->toDateString(), $endDate->toDateString()]);
+        
+        if ($brand) {
+            $query->where('brand', $brand);
+        }
+        if ($category !== null) {
+            if ($category === '') {
+                $query->whereNull('category');
+            } else {
+                $query->where('category', $category);
+            }
+        }
+        if ($transactionType) {
+            $query->where('transaction_type', $transactionType);
+            // If transaction_type is 'out', notes_for_in filter doesn't apply
+            if ($notesForIn && $transactionType === 'in') {
+                $query->where('notes', 'LIKE', '%' . $notesForIn . '%');
+            }
+        } else {
+            // Filter notes for 'in' transactions when no specific transaction_type is set
+            if ($notesForIn) {
+                $query->where(function($q) use ($notesForIn) {
+                    $q->where(function($subQ) use ($notesForIn) {
+                        $subQ->where('transaction_type', 'in')
+                             ->where('notes', 'LIKE', '%' . $notesForIn . '%');
+                    })->orWhere('transaction_type', '!=', 'in');
+                });
+            }
+        }
+        
+        $stocks = $query->orderBy('stock_date')
             ->orderBy('brand')
             ->orderBy('category')
+            ->orderBy('transaction_type')
             ->get();
 
         // Group by date
@@ -981,14 +1046,35 @@ class StockController extends Controller
             $dailyReports[$dateStr] = $dayReport;
         }
 
-        return response([
+        $response = [
             'data' => $dailyReports,
             'from_date' => $startDate->toDateString(),
             'to_date' => $endDate->toDateString(),
             'days_with_data' => count($dailyReports),
             'total_days' => $startDate->diffInDays($endDate) + 1,
             'message' => 'Date range report retrieved successfully'
-        ], 200);
+        ];
+
+        // Add filter information if applied
+        $filters = [];
+        if ($brand) {
+            $filters['brand'] = $brand;
+        }
+        if ($category !== null) {
+            $filters['category'] = $category;
+        }
+        if ($transactionType) {
+            $filters['transaction_type'] = $transactionType;
+        }
+        if ($notesForIn) {
+            $filters['notes_for_in'] = $notesForIn;
+        }
+        
+        if (!empty($filters)) {
+            $response['filters'] = $filters;
+        }
+
+        return response($response, 200);
     }
 
     /**

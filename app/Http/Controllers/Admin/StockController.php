@@ -29,8 +29,6 @@ class StockController extends Controller
         $stocks = Stock::where('stock_date', $date)
             ->orderBy('brand')
             ->orderBy('category')
-            ->orderBy('size')
-            ->orderBy('color')
             ->orderBy('transaction_type')
             ->get();
 
@@ -47,8 +45,8 @@ class StockController extends Controller
     public function getCurrentStock()
     {
         // Get all unique stock combinations
-        $uniqueStocks = Stock::select('brand', 'category', 'size', 'color')
-            ->groupBy('brand', 'category', 'size', 'color')
+        $uniqueStocks = Stock::select('brand', 'category')
+            ->groupBy('brand', 'category')
             ->get();
 
         $currentStocks = [];
@@ -67,24 +65,6 @@ class StockController extends Controller
                 $queryOut->whereNull('category');
             }
             
-            // Handle size
-            if ($uniqueStock->size) {
-                $queryIn->where('size', $uniqueStock->size);
-                $queryOut->where('size', $uniqueStock->size);
-            } else {
-                $queryIn->whereNull('size');
-                $queryOut->whereNull('size');
-            }
-            
-            // Handle color
-            if ($uniqueStock->color) {
-                $queryIn->where('color', $uniqueStock->color);
-                $queryOut->where('color', $uniqueStock->color);
-            } else {
-                $queryIn->whereNull('color');
-                $queryOut->whereNull('color');
-            }
-            
             $totalIn = $queryIn->where('transaction_type', 'in')->sum('quantity');
             $totalOut = $queryOut->where('transaction_type', 'out')->sum('quantity');
             $currentQuantity = $totalIn - $totalOut;
@@ -92,26 +72,18 @@ class StockController extends Controller
             $currentStocks[] = [
                 'brand' => $uniqueStock->brand,
                 'category' => $uniqueStock->category,
-                'size' => $uniqueStock->size,
-                'color' => $uniqueStock->color,
                 'total_in' => $totalIn,
                 'total_out' => $totalOut,
                 'current_quantity' => $currentQuantity,
             ];
         }
 
-        // Sort by brand, category, size, color
+        // Sort by brand, category
         usort($currentStocks, function($a, $b) {
             $brandCompare = strcmp($a['brand'], $b['brand']);
             if ($brandCompare !== 0) return $brandCompare;
             
-            $categoryCompare = strcmp($a['category'] ?? '', $b['category'] ?? '');
-            if ($categoryCompare !== 0) return $categoryCompare;
-            
-            $sizeCompare = strcmp($a['size'] ?? '', $b['size'] ?? '');
-            if ($sizeCompare !== 0) return $sizeCompare;
-            
-            return strcmp($a['color'] ?? '', $b['color'] ?? '');
+            return strcmp($a['category'] ?? '', $b['category'] ?? '');
         });
 
         return response()->json([
@@ -142,23 +114,18 @@ class StockController extends Controller
 
         $transactions = $query->orderBy('brand')
             ->orderBy('category')
-            ->orderBy('size')
-            ->orderBy('color')
             ->orderBy('transaction_type')
             ->get();
 
         // Group by item and show in/out totals
         $result = [];
         foreach ($transactions as $transaction) {
-            $key = $transaction->brand . '|' . ($transaction->category ?? '') . '|' . 
-                   ($transaction->size ?? '') . '|' . ($transaction->color ?? '');
+            $key = $transaction->brand . '|' . ($transaction->category ?? '');
             
             if (!isset($result[$key])) {
                 $result[$key] = [
                     'brand' => $transaction->brand,
                     'category' => $transaction->category,
-                    'size' => $transaction->size,
-                    'color' => $transaction->color,
                     'in_quantity' => 0,
                     'out_quantity' => 0,
                     'transactions' => []
@@ -193,8 +160,8 @@ class StockController extends Controller
     public function getBrandsGroupedByCategory()
     {
         // Get all unique stock combinations
-        $uniqueStocks = Stock::select('brand', 'category', 'size', 'color')
-            ->groupBy('brand', 'category', 'size', 'color')
+        $uniqueStocks = Stock::select('brand', 'category')
+            ->groupBy('brand', 'category')
             ->get();
 
         $groupedData = [];
@@ -211,24 +178,6 @@ class StockController extends Controller
             } else {
                 $queryIn->whereNull('category');
                 $queryOut->whereNull('category');
-            }
-            
-            // Handle size
-            if ($uniqueStock->size) {
-                $queryIn->where('size', $uniqueStock->size);
-                $queryOut->where('size', $uniqueStock->size);
-            } else {
-                $queryIn->whereNull('size');
-                $queryOut->whereNull('size');
-            }
-            
-            // Handle color
-            if ($uniqueStock->color) {
-                $queryIn->where('color', $uniqueStock->color);
-                $queryOut->where('color', $uniqueStock->color);
-            } else {
-                $queryIn->whereNull('color');
-                $queryOut->whereNull('color');
             }
             
             $totalIn = $queryIn->where('transaction_type', 'in')->sum('quantity');
@@ -263,8 +212,6 @@ class StockController extends Controller
 
             // Add item to category
             $groupedData[$brand]['categories'][$category]['items'][] = [
-                'size' => $uniqueStock->size,
-                'color' => $uniqueStock->color,
                 'total_in' => $totalIn,
                 'total_out' => $totalOut,
                 'current_quantity' => $currentQuantity,

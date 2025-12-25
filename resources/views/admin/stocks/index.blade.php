@@ -69,8 +69,6 @@
                            <th>ID</th>
                            <th>Brand</th>
                            <th>Category</th>
-                           <th>Size</th>
-                           <th>Color</th>
                            <th>Type</th>
                            <th>Quantity</th>
                            <th>Date</th>
@@ -79,7 +77,7 @@
                      </thead>
                      <tbody id="stockTableBody">
                         <tr>
-                           <td colspan="9" class="text-center">Loading...</td>
+                           <td colspan="7" class="text-center">Loading...</td>
                         </tr>
                      </tbody>
                   </table>
@@ -145,14 +143,6 @@
                   <small class="form-text text-muted">Select a brand to see available mobile models</small>
                </div>
                <div class="form-group">
-                  <label>Size</label>
-                  <input type="text" class="form-control" name="size" placeholder="e.g., 256gb">
-               </div>
-               <div class="form-group">
-                  <label>Color</label>
-                  <input type="text" class="form-control" name="color" placeholder="e.g., Black, Gold">
-               </div>
-               <div class="form-group">
                   <label>Quantity In (Add Stock)</label>
                   <input type="number" class="form-control" name="quantity_in" min="0" placeholder="Enter quantity to add">
                   <small class="form-text text-muted">Leave empty if no stock to add</small>
@@ -211,17 +201,15 @@
             </div>
             <div id="bulkStockItems">
                <div class="row mb-2">
-                  <div class="col-md-2"><strong>Brand</strong></div>
-                  <div class="col-md-2"><strong>Category</strong></div>
-                  <div class="col-md-1"><strong>Size</strong></div>
-                  <div class="col-md-1"><strong>Color</strong></div>
-                  <div class="col-md-1"><strong>Qty In</strong></div>
-                  <div class="col-md-1"><strong>Qty Out</strong></div>
-                  <div class="col-md-1"><strong>Action</strong></div>
+                  <div class="col-md-3"><strong>Brand</strong></div>
+                  <div class="col-md-3"><strong>Category</strong></div>
+                  <div class="col-md-2"><strong>Qty In</strong></div>
+                  <div class="col-md-2"><strong>Qty Out</strong></div>
+                  <div class="col-md-2"><strong>Action</strong></div>
                </div>
                <div class="stock-item-row mb-2">
                   <div class="row">
-                     <div class="col-md-2">
+                     <div class="col-md-3">
                         <select class="form-control form-control-sm bulk-brand-select" name="bulk_brand[]" required onchange="updateBulkCategory(this)">
                            <option value="">Select</option>
                            <option value="Apple">Apple</option>
@@ -230,24 +218,18 @@
                            <option value="vivo">vivo</option>
                         </select>
                      </div>
-                     <div class="col-md-2">
+                     <div class="col-md-3">
                         <select class="form-control form-control-sm bulk-category-select" name="bulk_category[]">
                            <option value="">Select Brand First</option>
                         </select>
                      </div>
-                     <div class="col-md-1">
-                        <input type="text" class="form-control form-control-sm" name="bulk_size[]" placeholder="256gb">
-                     </div>
-                     <div class="col-md-1">
-                        <input type="text" class="form-control form-control-sm" name="bulk_color[]" placeholder="Color">
-                     </div>
-                     <div class="col-md-1">
+                     <div class="col-md-2">
                         <input type="number" class="form-control form-control-sm" name="bulk_quantity_in[]" placeholder="0" min="0">
                      </div>
-                     <div class="col-md-1">
+                     <div class="col-md-2">
                         <input type="number" class="form-control form-control-sm" name="bulk_quantity_out[]" placeholder="0" min="0">
                      </div>
-                     <div class="col-md-1">
+                     <div class="col-md-2">
                         <button type="button" class="btn btn-sm btn-danger" onclick="removeStockRow(this)">
                            <i class="fas fa-times"></i>
                         </button>
@@ -296,14 +278,6 @@
                      <option value="">Select Brand First</option>
                   </select>
                   <small class="form-text text-muted">Select a brand to see available mobile models</small>
-               </div>
-               <div class="form-group">
-                  <label>Size</label>
-                  <input type="text" class="form-control" id="editSize" placeholder="e.g., 256gb">
-               </div>
-               <div class="form-group">
-                  <label>Color</label>
-                  <input type="text" class="form-control" id="editColor" placeholder="e.g., Black, Gold">
                </div>
                <div class="form-group">
                   <label>Transaction Type *</label>
@@ -465,8 +439,6 @@ function loadStockList() {
                   ? '<span class="badge badge-success">IN</span>' 
                   : '<span class="badge badge-danger">OUT</span>';
                const category = stock.category || '-';
-               const size = stock.size || '-';
-               const color = stock.color || '-';
                const notes = (stock.notes || '').replace(/'/g, "\\'");
                
                return `
@@ -474,13 +446,11 @@ function loadStockList() {
                   <td>${stock.id}</td>
                   <td>${stock.brand}</td>
                   <td>${category}</td>
-                  <td>${size}</td>
-                  <td>${color}</td>
                   <td>${typeBadge}</td>
                   <td><strong>${stock.quantity}</strong></td>
                   <td>${stock.stock_date}</td>
                   <td>
-                     <button class="btn btn-sm btn-info" onclick="editStock(${stock.id}, '${stock.brand}', '${category}', '${size}', '${color}', '${stock.transaction_type}', ${stock.quantity}, '${stock.stock_date}', '${notes}')">
+                     <button class="btn btn-sm btn-info" onclick="editStock(${stock.id}, '${stock.brand}', '${category}', '${stock.transaction_type}', ${stock.quantity}, '${stock.stock_date}', '${notes}')">
                         <i class="fas fa-edit"></i>
                      </button>
                      <button class="btn btn-sm btn-danger" onclick="deleteStock(${stock.id})">
@@ -491,7 +461,7 @@ function loadStockList() {
             `;
             }).join('');
          } else {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No stock found for this date</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No stock found for this date</td></tr>';
          }
       })
       .catch(error => {
@@ -557,8 +527,6 @@ function bulkAddStock() {
    const date = document.getElementById('bulkDate').value;
    const brands = document.getElementsByName('bulk_brand[]');
    const categories = document.getElementsByName('bulk_category[]');
-   const sizes = document.getElementsByName('bulk_size[]');
-   const colors = document.getElementsByName('bulk_color[]');
    const quantitiesIn = document.getElementsByName('bulk_quantity_in[]');
    const quantitiesOut = document.getElementsByName('bulk_quantity_out[]');
    
@@ -568,8 +536,6 @@ function bulkAddStock() {
          const stockData = {
             brand: brands[i].value,
             category: categories[i] ? categories[i].value : null,
-            size: sizes[i] ? sizes[i].value : null,
-            color: colors[i] ? colors[i].value : null,
          };
          
          // Add quantity_in if provided
@@ -639,17 +605,15 @@ function bulkAddStock() {
          $('#bulkAddModal').modal('hide');
          document.getElementById('bulkStockItems').innerHTML = `
             <div class="row mb-2">
-               <div class="col-md-2"><strong>Brand</strong></div>
-               <div class="col-md-2"><strong>Category</strong></div>
-               <div class="col-md-1"><strong>Size</strong></div>
-               <div class="col-md-1"><strong>Color</strong></div>
-               <div class="col-md-1"><strong>Qty In</strong></div>
-               <div class="col-md-1"><strong>Qty Out</strong></div>
-               <div class="col-md-1"><strong>Action</strong></div>
+               <div class="col-md-3"><strong>Brand</strong></div>
+               <div class="col-md-3"><strong>Category</strong></div>
+               <div class="col-md-2"><strong>Qty In</strong></div>
+               <div class="col-md-2"><strong>Qty Out</strong></div>
+               <div class="col-md-2"><strong>Action</strong></div>
             </div>
             <div class="stock-item-row mb-2">
                <div class="row">
-                  <div class="col-md-2">
+                  <div class="col-md-3">
                      <select class="form-control form-control-sm bulk-brand-select" name="bulk_brand[]" required onchange="updateBulkCategory(this)">
                         <option value="">Select</option>
                         <option value="Apple">Apple</option>
@@ -658,24 +622,18 @@ function bulkAddStock() {
                         <option value="vivo">vivo</option>
                      </select>
                   </div>
-                  <div class="col-md-2">
+                  <div class="col-md-3">
                      <select class="form-control form-control-sm bulk-category-select" name="bulk_category[]">
                         <option value="">Select Brand First</option>
                      </select>
                   </div>
-                  <div class="col-md-1">
-                     <input type="text" class="form-control form-control-sm" name="bulk_size[]" placeholder="256gb">
-                  </div>
-                  <div class="col-md-1">
-                     <input type="text" class="form-control form-control-sm" name="bulk_color[]" placeholder="Color">
-                  </div>
-                  <div class="col-md-1">
+                  <div class="col-md-2">
                      <input type="number" class="form-control form-control-sm" name="bulk_quantity_in[]" placeholder="0" min="0">
                   </div>
-                  <div class="col-md-1">
+                  <div class="col-md-2">
                      <input type="number" class="form-control form-control-sm" name="bulk_quantity_out[]" placeholder="0" min="0">
                   </div>
-                  <div class="col-md-1">
+                  <div class="col-md-2">
                      <button type="button" class="btn btn-sm btn-danger" onclick="removeStockRow(this)">
                         <i class="fas fa-times"></i>
                      </button>
@@ -722,7 +680,7 @@ function addStockRow() {
    newRow.className = 'stock-item-row mb-2';
    newRow.innerHTML = `
       <div class="row">
-         <div class="col-md-2">
+         <div class="col-md-3">
             <select class="form-control form-control-sm bulk-brand-select" name="bulk_brand[]" required onchange="updateBulkCategory(this)">
                <option value="">Select</option>
                <option value="Apple">Apple</option>
@@ -731,24 +689,18 @@ function addStockRow() {
                <option value="vivo">vivo</option>
             </select>
          </div>
-         <div class="col-md-2">
+         <div class="col-md-3">
             <select class="form-control form-control-sm bulk-category-select" name="bulk_category[]">
                <option value="">Select Brand First</option>
             </select>
          </div>
-         <div class="col-md-1">
-            <input type="text" class="form-control form-control-sm" name="bulk_size[]" placeholder="256gb">
-         </div>
-         <div class="col-md-1">
-            <input type="text" class="form-control form-control-sm" name="bulk_color[]" placeholder="Color">
-         </div>
-         <div class="col-md-1">
+         <div class="col-md-2">
             <input type="number" class="form-control form-control-sm" name="bulk_quantity_in[]" placeholder="0" min="0">
          </div>
-         <div class="col-md-1">
+         <div class="col-md-2">
             <input type="number" class="form-control form-control-sm" name="bulk_quantity_out[]" placeholder="0" min="0">
          </div>
-         <div class="col-md-1">
+         <div class="col-md-2">
             <button type="button" class="btn btn-sm btn-danger" onclick="removeStockRow(this)">
                <i class="fas fa-times"></i>
             </button>
@@ -769,7 +721,7 @@ function removeStockRow(btn) {
 }
 
 // Edit stock
-function editStock(id, brand, category, size, color, transactionType, quantity, date, notes) {
+function editStock(id, brand, category, transactionType, quantity, date, notes) {
    document.getElementById('editStockId').value = id;
    document.getElementById('editBrand').value = brand;
    
@@ -791,8 +743,6 @@ function editStock(id, brand, category, size, color, transactionType, quantity, 
       }
    }, 100);
    
-   document.getElementById('editSize').value = size || '';
-   document.getElementById('editColor').value = color || '';
    document.getElementById('editTransactionType').value = transactionType;
    document.getElementById('editQuantity').value = quantity;
    document.getElementById('editStockDate').value = date;
@@ -805,8 +755,6 @@ function updateStock() {
    const id = document.getElementById('editStockId').value;
    const brand = document.getElementById('editBrand').value;
    const category = document.getElementById('editCategory').value;
-   const size = document.getElementById('editSize').value;
-   const color = document.getElementById('editColor').value;
    const transactionType = document.getElementById('editTransactionType').value;
    const quantity = parseInt(document.getElementById('editQuantity').value);
    const stockDate = document.getElementById('editStockDate').value;
@@ -815,8 +763,6 @@ function updateStock() {
    const data = {
       brand: brand,
       category: category || null,
-      size: size || null,
-      color: color || null,
       transaction_type: transactionType,
       quantity: quantity,
       stock_date: stockDate,
@@ -928,8 +874,7 @@ function loadDateWiseReport() {
                <thead>
                   <tr>
                      <th>Brand</th>
-                     <th>Size</th>
-                     <th>Color</th>
+                     <th>Category</th>
                      <th>Add New</th>
                      <th>Minus</th>
                      <th>Remaining</th>
@@ -943,8 +888,7 @@ function loadDateWiseReport() {
                html += `
                   <tr>
                      <td>${item.brand}</td>
-                     <td>${item.size || '-'}</td>
-                     <td>${item.color || '-'}</td>
+                     <td>${item.category || '-'}</td>
                      <td class="text-success"><strong>${item.add_new}</strong></td>
                      <td class="text-danger"><strong>${item.minus}</strong></td>
                      <td class="text-primary"><strong>${item.remaining}</strong></td>
@@ -1015,7 +959,7 @@ function renderDailyReport(data) {
    
    let html = `<p><strong>Date:</strong> ${data.date} | <strong>Previous:</strong> ${data.previous_date}</p>`;
    html += `<table class="table table-bordered table-striped">
-      <thead><tr><th>Brand</th><th>Size</th><th>Color</th><th>Previous</th><th>Current</th><th>Change</th></tr></thead>
+      <thead><tr><th>Brand</th><th>Category</th><th>Previous</th><th>Current</th><th>Change</th></tr></thead>
       <tbody>`;
    
    data.data.forEach(item => {
@@ -1023,8 +967,7 @@ function renderDailyReport(data) {
                          item.change_type === 'minus' ? 'text-danger' : 'text-muted';
       html += `<tr>
          <td>${item.brand}</td>
-         <td>${item.size}</td>
-         <td>${item.color}</td>
+         <td>${item.category || '-'}</td>
          <td>${item.previous_quantity}</td>
          <td><strong>${item.quantity}</strong></td>
          <td class="${changeClass}"><strong>${item.change_text}</strong></td>
@@ -1043,15 +986,14 @@ function renderWeeklyReport(data) {
       html += `<h6>${date}</h6>`;
       if (data.data[date].length > 0) {
          html += `<table class="table table-sm table-bordered mb-3">
-            <thead><tr><th>Brand</th><th>Size</th><th>Color</th><th>Qty</th><th>Change</th></tr></thead>
+            <thead><tr><th>Brand</th><th>Category</th><th>Qty</th><th>Change</th></tr></thead>
             <tbody>`;
          data.data[date].forEach(item => {
             const changeClass = item.change_type === 'plus' ? 'text-success' : 
                                item.change_type === 'minus' ? 'text-danger' : 'text-muted';
             html += `<tr>
                <td>${item.brand}</td>
-               <td>${item.size}</td>
-               <td>${item.color}</td>
+               <td>${item.category || '-'}</td>
                <td>${item.quantity}</td>
                <td class="${changeClass}">${item.change_text}</td>
             </tr>`;
@@ -1070,15 +1012,14 @@ function renderMonthlyReport(data) {
       if (data.data[date].length > 0) {
          html += `<h6>${date}</h6>`;
          html += `<table class="table table-sm table-bordered mb-3">
-            <thead><tr><th>Brand</th><th>Size</th><th>Color</th><th>Qty</th><th>Change</th></tr></thead>
+            <thead><tr><th>Brand</th><th>Category</th><th>Qty</th><th>Change</th></tr></thead>
             <tbody>`;
          data.data[date].forEach(item => {
             const changeClass = item.change_type === 'plus' ? 'text-success' : 
                                item.change_type === 'minus' ? 'text-danger' : 'text-muted';
             html += `<tr>
                <td>${item.brand}</td>
-               <td>${item.size}</td>
-               <td>${item.color}</td>
+               <td>${item.category || '-'}</td>
                <td>${item.quantity}</td>
                <td class="${changeClass}">${item.change_text}</td>
             </tr>`;
@@ -1155,8 +1096,6 @@ function loadBrandsGrouped() {
                               <table class="table table-sm table-bordered">
                                  <thead>
                                     <tr>
-                                       <th>Size</th>
-                                       <th>Color</th>
                                        <th>In</th>
                                        <th>Out</th>
                                        <th class="${categoryStockClass}"><strong>Available</strong></th>
@@ -1172,8 +1111,6 @@ function loadBrandsGrouped() {
                         
                         html += `
                            <tr>
-                              <td>${item.size || '-'}</td>
-                              <td>${item.color || '-'}</td>
                               <td class="text-success">+${item.total_in}</td>
                               <td class="text-danger">-${item.total_out}</td>
                               <td class="${itemStockClass}"><strong>${item.current_quantity}</strong></td>

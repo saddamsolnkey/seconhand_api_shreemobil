@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\demoController;
 use App\Http\Controllers\Api\StockController;
+use App\Http\Controllers\Api\MobileBrandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -66,6 +67,13 @@ Route::group([
     Route::get('stock-summary', [StockController::class, 'stockSummary']);
     Route::get('stock-transactions-by-date', [StockController::class, 'stockTransactionsByDate']);
     Route::get('stock-brands-grouped', [StockController::class, 'stockBrandsGrouped']);
+
+    // Mobile Brands and Categories Routes
+    Route::get('brands', [MobileBrandController::class, 'getBrands']);
+    Route::get('brands/list', [MobileBrandController::class, 'getBrandsList']);
+    Route::get('brands/{brandId}', [MobileBrandController::class, 'getBrand']);
+    Route::get('brands/{brandId}/categories', [MobileBrandController::class, 'getCategories']);
+    Route::get('categories', [MobileBrandController::class, 'getCategories']);
 
 });
 

@@ -129,10 +129,6 @@
                   <label>Brand *</label>
                   <select class="form-control" name="brand" id="addBrand" required onchange="updateCategoryOptions('add')">
                      <option value="">Select Brand</option>
-                     <option value="Apple">Apple</option>
-                     <option value="Samsung">Samsung</option>
-                     <option value="OPPO">OPPO</option>
-                     <option value="vivo">vivo</option>
                   </select>
                </div>
                <div class="form-group">
@@ -212,10 +208,6 @@
                      <div class="col-md-3">
                         <select class="form-control form-control-sm bulk-brand-select" name="bulk_brand[]" required onchange="updateBulkCategory(this)">
                            <option value="">Select</option>
-                           <option value="Apple">Apple</option>
-                           <option value="Samsung">Samsung</option>
-                           <option value="OPPO">OPPO</option>
-                           <option value="vivo">vivo</option>
                         </select>
                      </div>
                      <div class="col-md-3">
@@ -266,10 +258,6 @@
                   <label>Brand *</label>
                   <select class="form-control" id="editBrand" required onchange="updateCategoryOptions('edit')">
                      <option value="">Select Brand</option>
-                     <option value="Apple">Apple</option>
-                     <option value="Samsung">Samsung</option>
-                     <option value="OPPO">OPPO</option>
-                     <option value="vivo">vivo</option>
                   </select>
                </div>
                <div class="form-group">
@@ -311,93 +299,104 @@
 <script>
 const API_BASE = '{{ url("/api") }}';
 
-// Mobile models/categories for each brand
-const brandCategories = {
-   'Apple': [
-      'iPhone 15 Pro Max',
-      'iPhone 15 Pro',
-      'iPhone 15 Plus',
-      'iPhone 15',
-      'iPhone 14 Pro Max',
-      'iPhone 14 Pro',
-      'iPhone 14 Plus',
-      'iPhone 14',
-      'iPhone 13 Pro Max',
-      'iPhone 13 Pro',
-      'iPhone 13',
-      'iPhone 13 mini',
-      'iPhone 12 Pro Max',
-      'iPhone 12 Pro',
-      'iPhone 12',
-      'iPhone 12 mini',
-      'iPhone 11 Pro Max',
-      'iPhone 11 Pro',
-      'iPhone 11',
-      'iPhone XS Max',
-      'iPhone XS',
-      'iPhone XR',
-      'iPhone X',
-      'iPhone 8 Plus',
-      'iPhone 8',
-      'iPhone SE (2022)',
-      'iPhone SE (2020)',
-      'Other'
-   ],
-   'Samsung': [
-      'Galaxy S24 Ultra',
-      'Galaxy S24+',
-      'Galaxy S24',
-      'Galaxy S23 Ultra',
-      'Galaxy S23+',
-      'Galaxy S23',
-      'Galaxy S22 Ultra',
-      'Galaxy S22+',
-      'Galaxy S22',
-      'Galaxy S21 Ultra',
-      'Galaxy S21+',
-      'Galaxy S21',
-      'Galaxy Note 20 Ultra',
-      'Galaxy Note 20',
-      'Galaxy A54',
-      'Galaxy A34',
-      'Galaxy A24',
-      'Galaxy A14',
-      'Galaxy Z Fold 5',
-      'Galaxy Z Flip 5',
-      'Galaxy Z Fold 4',
-      'Galaxy Z Flip 4',
-      'Other'
-   ],
-   'OPPO': [
-      'OPPO Find X6 Pro',
-      'OPPO Find X5 Pro',
-      'OPPO Find X3 Pro',
-      'OPPO Reno 10 Pro',
-      'OPPO Reno 9 Pro',
-      'OPPO Reno 8 Pro',
-      'OPPO A98',
-      'OPPO A78',
-      'OPPO A58',
-      'OPPO A38',
-      'OPPO F21 Pro',
-      'OPPO F19 Pro',
-      'Other'
-   ],
-   'vivo': [
-      'vivo X100 Pro',
-      'vivo X90 Pro',
-      'vivo X80 Pro',
-      'vivo V29 Pro',
-      'vivo V27 Pro',
-      'vivo V25 Pro',
-      'vivo Y100',
-      'vivo Y78',
-      'vivo Y56',
-      'vivo T2 Pro',
-      'vivo T1 Pro',
-      'Other'
-   ]
-};
+// Mobile models/categories for each brand - loaded from API
+let brandCategories = {};
+let brandsList = [];
+
+// Load brands and categories from API on page load
+document.addEventListener('DOMContentLoaded', function() {
+   loadBrandsAndCategories();
+});
+
+// Function to load brands and categories from API
+function loadBrandsAndCategories() {
+   // Load brands list
+   fetch(`${API_BASE}/brands/list`)
+      .then(response => response.json())
+      .then(data => {
+         if (data.data) {
+            brandsList = data.data;
+            populateBrandDropdowns();
+         }
+      })
+      .catch(error => {
+         console.error('Error loading brands:', error);
+         showAlert('Error loading brands. Using default brands.', 'warning');
+         // Fallback to default brands
+         brandsList = [
+            {id: 1, name: 'Apple'},
+            {id: 2, name: 'Samsung'},
+            {id: 3, name: 'OPPO'},
+            {id: 4, name: 'vivo'}
+         ];
+         populateBrandDropdowns();
+      });
+
+   // Load brands with categories
+   fetch(`${API_BASE}/brands`)
+      .then(response => response.json())
+      .then(data => {
+         if (data.data) {
+            brandCategories = data.data;
+         }
+      })
+      .catch(error => {
+         console.error('Error loading categories:', error);
+         showAlert('Error loading categories. Please refresh the page.', 'warning');
+      });
+}
+
+// Populate brand dropdowns in all modals
+function populateBrandDropdowns() {
+   // Function to populate a single select element
+   const populateSelect = (select) => {
+      if (!select) return;
+      
+      // Keep the first option (Select Brand) if it exists
+      const firstOption = select.querySelector('option[value=""]');
+      select.innerHTML = '';
+      
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = firstOption ? firstOption.textContent : 'Select Brand';
+      select.appendChild(defaultOption);
+
+      // Add brands from API
+      brandsList.forEach(brand => {
+         const option = document.createElement('option');
+         option.value = brand.name;
+         option.textContent = brand.name;
+         select.appendChild(option);
+      });
+   };
+
+   // Populate existing selects
+   const addBrandSelect = document.getElementById('addBrand');
+   const editBrandSelect = document.getElementById('editBrand');
+   const bulkBrandSelects = document.querySelectorAll('.bulk-brand-select');
+
+   if (addBrandSelect) populateSelect(addBrandSelect);
+   if (editBrandSelect) populateSelect(editBrandSelect);
+   bulkBrandSelects.forEach(select => populateSelect(select));
+}
+
+// Function to populate brand dropdown for a newly added row
+function populateNewRowBrandSelect(selectElement) {
+   if (!selectElement || !brandsList.length) return;
+   
+   const defaultOption = document.createElement('option');
+   defaultOption.value = '';
+   defaultOption.textContent = 'Select';
+   selectElement.innerHTML = '';
+   selectElement.appendChild(defaultOption);
+
+   brandsList.forEach(brand => {
+      const option = document.createElement('option');
+      option.value = brand.name;
+      option.textContent = brand.name;
+      selectElement.appendChild(option);
+   });
+}
 
 // Update category dropdown based on selected brand
 function updateCategoryOptions(formType) {
@@ -405,19 +404,47 @@ function updateCategoryOptions(formType) {
    const categorySelect = formType === 'edit' ? document.getElementById('editCategory') : document.getElementById('addCategory');
    
    const selectedBrand = brandSelect.value;
-   categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
+   categorySelect.innerHTML = '<option value="">Loading...</option>';
    
-   if (selectedBrand && brandCategories[selectedBrand]) {
+   if (!selectedBrand) {
+      categorySelect.innerHTML = '<option value="">Select Brand First</option>';
+      return;
+   }
+
+   // Check if categories are already loaded in cache
+   if (brandCategories[selectedBrand] && brandCategories[selectedBrand].length > 0) {
+      categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
       brandCategories[selectedBrand].forEach(model => {
          const option = document.createElement('option');
          option.value = model;
          option.textContent = model;
          categorySelect.appendChild(option);
       });
-   } else if (selectedBrand) {
-      categorySelect.innerHTML = '<option value="">No models available</option>';
    } else {
-      categorySelect.innerHTML = '<option value="">Select Brand First</option>';
+      // Fetch categories from API
+      fetch(`${API_BASE}/categories?brand_name=${encodeURIComponent(selectedBrand)}`)
+         .then(response => response.json())
+         .then(data => {
+            categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
+            
+            if (data.data && data.data.length > 0) {
+               // Cache the categories
+               brandCategories[selectedBrand] = data.data.map(cat => cat.name);
+               
+               data.data.forEach(category => {
+                  const option = document.createElement('option');
+                  option.value = category.name;
+                  option.textContent = category.name;
+                  categorySelect.appendChild(option);
+               });
+            } else {
+               categorySelect.innerHTML = '<option value="">No models available</option>';
+            }
+         })
+         .catch(error => {
+            console.error('Error loading categories:', error);
+            categorySelect.innerHTML = '<option value="">Error loading categories</option>';
+         });
    }
 }
 
@@ -657,19 +684,47 @@ function updateBulkCategory(brandSelect) {
    const categorySelect = row.querySelector('.bulk-category-select');
    const selectedBrand = brandSelect.value;
    
-   categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
+   categorySelect.innerHTML = '<option value="">Loading...</option>';
    
-   if (selectedBrand && brandCategories[selectedBrand]) {
+   if (!selectedBrand) {
+      categorySelect.innerHTML = '<option value="">Select Brand First</option>';
+      return;
+   }
+
+   // Check if categories are already loaded in cache
+   if (brandCategories[selectedBrand] && brandCategories[selectedBrand].length > 0) {
+      categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
       brandCategories[selectedBrand].forEach(model => {
          const option = document.createElement('option');
          option.value = model;
          option.textContent = model;
          categorySelect.appendChild(option);
       });
-   } else if (selectedBrand) {
-      categorySelect.innerHTML = '<option value="">No models available</option>';
    } else {
-      categorySelect.innerHTML = '<option value="">Select Brand First</option>';
+      // Fetch categories from API
+      fetch(`${API_BASE}/categories?brand_name=${encodeURIComponent(selectedBrand)}`)
+         .then(response => response.json())
+         .then(data => {
+            categorySelect.innerHTML = '<option value="">Select Mobile Model</option>';
+            
+            if (data.data && data.data.length > 0) {
+               // Cache the categories
+               brandCategories[selectedBrand] = data.data.map(cat => cat.name);
+               
+               data.data.forEach(category => {
+                  const option = document.createElement('option');
+                  option.value = category.name;
+                  option.textContent = category.name;
+                  categorySelect.appendChild(option);
+               });
+            } else {
+               categorySelect.innerHTML = '<option value="">No models available</option>';
+            }
+         })
+         .catch(error => {
+            console.error('Error loading categories:', error);
+            categorySelect.innerHTML = '<option value="">Error loading categories</option>';
+         });
    }
 }
 
@@ -683,10 +738,6 @@ function addStockRow() {
          <div class="col-md-3">
             <select class="form-control form-control-sm bulk-brand-select" name="bulk_brand[]" required onchange="updateBulkCategory(this)">
                <option value="">Select</option>
-               <option value="Apple">Apple</option>
-               <option value="Samsung">Samsung</option>
-               <option value="OPPO">OPPO</option>
-               <option value="vivo">vivo</option>
             </select>
          </div>
          <div class="col-md-3">
@@ -708,6 +759,12 @@ function addStockRow() {
       </div>
    `;
    container.appendChild(newRow);
+   
+   // Populate the brand dropdown for the new row
+   const brandSelect = newRow.querySelector('.bulk-brand-select');
+   if (brandSelect) {
+      populateNewRowBrandSelect(brandSelect);
+   }
 }
 
 // Remove stock row
@@ -725,23 +782,46 @@ function editStock(id, brand, category, transactionType, quantity, date, notes) 
    document.getElementById('editStockId').value = id;
    document.getElementById('editBrand').value = brand;
    
-   // Update category options first, then set the value
-   updateCategoryOptions('edit');
+   const categorySelect = document.getElementById('editCategory');
+   const selectedCategory = category || '';
    
-   // Use setTimeout to ensure dropdown is populated before setting value
-   setTimeout(() => {
-      const categorySelect = document.getElementById('editCategory');
-      categorySelect.value = category || '';
+   // Update category options first, then set the value
+   if (brandCategories[brand] && brandCategories[brand].length > 0) {
+      // Categories already cached, populate immediately
+      updateCategoryOptions('edit');
+      setTimeout(() => {
+         categorySelect.value = selectedCategory;
+         // If category is not in the list, add it as an option
+         if (selectedCategory && !Array.from(categorySelect.options).some(opt => opt.value === selectedCategory)) {
+            const option = document.createElement('option');
+            option.value = selectedCategory;
+            option.textContent = selectedCategory;
+            categorySelect.appendChild(option);
+            categorySelect.value = selectedCategory;
+         }
+      }, 50);
+   } else {
+      // Need to fetch from API, wait for it to complete
+      updateCategoryOptions('edit');
       
-      // If category is not in the list, add it as an option
-      if (category && !Array.from(categorySelect.options).some(opt => opt.value === category)) {
-         const option = document.createElement('option');
-         option.value = category;
-         option.textContent = category;
-         categorySelect.appendChild(option);
-         categorySelect.value = category;
-      }
-   }, 100);
+      // Wait for categories to load (check every 100ms, max 2 seconds)
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+         attempts++;
+         if (categorySelect.innerHTML !== '<option value="">Loading...</option>' || attempts > 20) {
+            clearInterval(checkInterval);
+            categorySelect.value = selectedCategory;
+            // If category is not in the list, add it as an option
+            if (selectedCategory && !Array.from(categorySelect.options).some(opt => opt.value === selectedCategory)) {
+               const option = document.createElement('option');
+               option.value = selectedCategory;
+               option.textContent = selectedCategory;
+               categorySelect.appendChild(option);
+               categorySelect.value = selectedCategory;
+            }
+         }
+      }, 100);
+   }
    
    document.getElementById('editTransactionType').value = transactionType;
    document.getElementById('editQuantity').value = quantity;

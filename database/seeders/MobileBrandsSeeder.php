@@ -99,7 +99,7 @@ class MobileBrandsSeeder extends Seeder
                 "F21 Pro",
                 "Uncategorized"
             ],
-            "Vivo" => [
+            "vivo" => [
                 "X100 Pro",
                 "X100",
                 "X90 Pro",

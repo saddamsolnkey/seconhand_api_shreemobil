@@ -55,7 +55,7 @@ class MobileBrandController extends Controller
     public function getBrandsList(Request $request)
     {
         $brands = MobileBrand::where('is_active', true)
-            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get(['id', 'name', 'sort_order']);
 
         return response([
@@ -128,7 +128,7 @@ class MobileBrandController extends Controller
         $brand = MobileBrand::where('id', $brandId)
             ->where('is_active', true)
             ->with(['categories' => function($query) {
-                $query->where('is_active', true)->orderBy('sort_order');
+                $query->where('is_active', true)->orderBy('name');
             }])
             ->first();
 

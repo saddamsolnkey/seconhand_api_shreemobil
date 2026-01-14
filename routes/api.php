@@ -72,8 +72,14 @@ Route::group([
     Route::get('brands', [MobileBrandController::class, 'getBrands']);
     Route::get('brands/list', [MobileBrandController::class, 'getBrandsList']);
     Route::get('brands/{brandId}', [MobileBrandController::class, 'getBrand']);
+    Route::post('brands', [MobileBrandController::class, 'createBrand']);
+    Route::put('brands/{id}', [MobileBrandController::class, 'updateBrand']);
+    Route::delete('brands/{id}', [MobileBrandController::class, 'deleteBrand']);
     Route::get('brands/{brandId}/categories', [MobileBrandController::class, 'getCategories']);
     Route::get('categories', [MobileBrandController::class, 'getCategories']);
+    Route::post('categories', [MobileBrandController::class, 'createCategory']);
+    Route::put('categories/{id}', [MobileBrandController::class, 'updateCategory']);
+    Route::delete('categories/{id}', [MobileBrandController::class, 'deleteCategory']);
 
 });
 

@@ -89,7 +89,6 @@ class ProductController extends Controller
     
     public function getallproduct(Request $request)
     {
-        return;
         if ((int)($request->buildnumber ?? 0) < 5) {
             return response(['error' => "Error", 'message' => 'Update the App']);
         }
@@ -127,7 +126,7 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {   
-        return;
+        
         $data = $request->all();
         $validator = Validator::make($data, [
             'mobile_name' => 'required|max:255',

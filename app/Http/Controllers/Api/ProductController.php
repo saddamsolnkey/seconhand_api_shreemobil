@@ -42,7 +42,11 @@ class ProductController extends Controller
         if (!empty($data['text'])) {
             $proList->where(function ($query) use ($data) {
                 $query->where('mobile_name', 'like', '%' . $data['text'] . '%')
-                      ->orWhere('mobile_emi', 'like', '%' . $data['text'] . '%');
+                      ->orWhere('mobile_emi', 'like', '%' . $data['text'] . '%')
+                      ->orWhere('mobile_price', 'like', '%' . $data['text'] . '%')
+                      ->orWhere('buyer_number', 'like', '%' . $data['text'] . '%')
+                      ->orWhere('sellerName', 'like', '%' . $data['text'] . '%')
+                      ->orWhere('buyerName', 'like', '%' . $data['text'] . '%');
             });
         }
     

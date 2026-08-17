@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\demoController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\MobileBrandController;
+use App\Http\Controllers\Api\UpiDataController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,14 @@ Route::group([
     
     Route::get('getalldevice', [ProductController::class, 'getalldevice']);
     Route::post('device-update', [ProductController::class, 'updatedevice']);
+
+    // UPI Data Routes
+    Route::get('upi-list', [UpiDataController::class, 'index']);
+    Route::get('getallupi', [UpiDataController::class, 'getallupi']);
+    Route::post('upi-create', [UpiDataController::class, 'store']);
+    Route::get('upi-search/{text}', [UpiDataController::class, 'search']);
+    Route::post('upi-search-new', [UpiDataController::class, 'searchnew']);
+    Route::get('upi-delete/{id}', [UpiDataController::class, 'delete']);
 
     // Stock Management Routes
     Route::get('stock-list', [StockController::class, 'stockList']);
